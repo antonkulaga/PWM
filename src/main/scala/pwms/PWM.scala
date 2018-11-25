@@ -1,6 +1,7 @@
 package pwms
 import breeze.linalg._
 import breeze.numerics._
+import breeze.stats._
 import cats._
 import cats.implicits._
 
@@ -20,6 +21,11 @@ object PWM {
         DenseMatrix.horzcat(a, DenseMatrix.zeros[Double](a.rows, b.cols - a.cols)) + b
       else
         addMatrices(b, a)
+
+
+  def insertMatrix(m: DenseMatrix[Double], sm: DenseMatrix[Double], pos: Int): DenseMatrix[Double] = {
+    DenseMatrix.horzcat(DenseMatrix.horzcat(m(::, 0 until pos), sm), m(::, pos until m.cols ))
+  }
 
   /**
     * Semigroup for adding two PWMs together
@@ -68,6 +74,8 @@ object PWM {
   */
 case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], totalMissScore: Double, gapMultiplier: Double = 5.0) {
 
+  val indexesInverted: SortedMap[Int, String] = indexes.map(_.swap)
+
   def apply(str: String): Transpose[DenseVector[Double]] = {
     require(indexes.contains(str), s"indexes do not contation ${str} \n indexes are:\n ${indexes.toString}")
     val num = indexes(str)
@@ -96,11 +104,23 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   protected lazy val backgroundColumn: DenseMatrix[Double] = oneColumn / (matrix.rows.toDouble - hasGaps.compare(false))
 
-  protected lazy val backgroundMatrix: DenseMatrix[Double] = tile(backgroundColumn, 1, matrix.cols)
+  lazy val backgroundMatrix: DenseMatrix[Double] = tile(backgroundColumn, 1, matrix.cols)
 
-  lazy val oddsTable: DenseMatrix[Double] =  (matrix +:+ (gapMatrix * gapMultiplier) ) / backgroundMatrix
+  lazy val sumRows: DenseMatrix[Double] = matrix * oneRow.t
+  lazy val sumCols: DenseMatrix[Double] = oneColumn.t * matrix
+  lazy val meanCol: Double = mean(sumCols)
+  lazy val colWeights: DenseMatrix[Double] = tile(sumCols / meanCol, matrix.rows, 1 )
+
+  //lazy val meanSumCols: DenseMatrix[Double] = { DenseMatrix.fill[Double](1, matrix.cols)(meanCol)}
+
+  lazy val relativeFrequencies: DenseMatrix[Double] = (matrix  +:+ (gapMatrix * gapMultiplier)) /:/  (oneColumn * sumCols)
+
+  lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
+
+  //lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
 
   lazy val logOddsTable: DenseMatrix[Double] = log( oddsTable ).map(v=> if(v.isInfinity) totalMissScore else v)
+  lazy val weightedLogOddsTable: DenseMatrix[Double] = logOddsTable  *:*  colWeights
 
   def sequenceToMatrix(seq: String, value: Double = 1.0): DenseMatrix[Double] = {
     val m = DenseMatrix.zeros[Double](matrix.rows, seq.length)
@@ -114,57 +134,74 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   /**
     * Converts sequence into PWM matrix
-    * @param seq
+    * @param sequence
     * @return
     */
-  def sequenceToPWM(seq: String, value: Double = 1.0) = PWM(indexes, sequenceToMatrix(seq, value), totalMissScore, gapMultiplier)
+  def sequenceToPWM(sequence: String, value: Double) = PWM(indexes, sequenceToMatrix(sequence, value), totalMissScore, gapMultiplier)
 
   def slideOdds(window: Int): immutable.IndexedSeq[DenseMatrix[Double]] = {
-    for { i <- 0 until matrix.cols - window } yield logOddsTable(::, i until i + window)
+    for { i <- 0 until matrix.cols - window } yield weightedLogOddsTable(::, i until i + window)
   }
 
-  def slideSequence(seq: String): Seq[(Int, Double)] = {
-    val sm = sequenceToMatrix(seq)
+  protected def slideSequence(sequence: String): Seq[(Int, Double)] = {
+    val sm = sequenceToMatrix(sequence)
     val window = sm.cols
     for {
       i <- 0 until matrix.cols - window
-      score = sum(logOddsTable(::, i until i + window) *:* sm)
+      score = scoreAt(sm, i)
     } yield i -> score
   }
 
-  def candidates(seq: String, num: Int, between: Int): Seq[(Int, Double)] = {
-    val c = slideSequence(seq).filter(_._2 > 0.0).sortWith{ case ((_, a), (_, b)) => a > b}
-    val window = seq.length
-    (c.head :: c.sliding(2).filter(s=>s.head._1 + window + between < s.last._1).map(_.last).toList).take(num)
+  def scoreAt(sequence: String, i: Int): Double = {
+    val sm = sequenceToMatrix(sequence)
+    scoreAt(sm, i)
+  }
+  def scoreAt(sm: DenseMatrix[Double], i: Int): Double = {
+    val window = sm.cols
+    sum(weightedLogOddsTable(::, i until i + window) *:* sm)
   }
 
-  def candidatePWM(seq: String, num: Int, between: Int): (PWM, Seq[Int]) = {
-    val sm = sequenceToMatrix(seq)
-    val cands = candidates(seq, num, between)
-    cands.foldLeft(this){
-      case (acc, (i, _)) => acc.insertPWM(sm, i)
-    } -> cands.map(_._1)
+  lazy val consensus = readBest(0, this.matrix.cols)
+
+  def readBest(position: Int, length: Int): String = {
+    val m: DenseMatrix[Double] = matrix(::, position until (position + length))
+    val args: Transpose[DenseVector[Int]] = argmax(m(::, *))
+    (for(i <- args.inner) yield indexesInverted(i)).reduce(_ + _)
   }
 
-  def insert(seq: String, index: Int, value: Double = 1.0): PWM = {
-    val sm = sequenceToMatrix(seq, value)
-    insertPWM(sm, index)
+  /**
+    * Computes and ranks candidate insertion places that do not intersect and have a distance between them
+    * @param seq sequence insertion place
+    * @param distance minimal distance between insertions
+    * @return
+    */
+  def candidates(seq: String, distance: Int = 0, minimalScore: Double = 0.0): List[(Int, Double)] = {
+    val slide: Seq[(Int, Double)] = slideSequence(seq).filter(_._2 > minimalScore)
+    val slides: List[(Int, Double)] = slide.foldLeft(List.empty[(Int, Double)]){
+      case (Nil, (i, v)) => (i, v)::Nil
+      case ( (i0, v0)::tail, (i, v) ) if i0 + distance + seq.length < i => (i, v)::(i0, v0)::tail
+      case ( (i0, v0)::tail, (_, v) ) if v0 >= v => (i0, v0)::tail
+      case ((_, v0)::tail, (i, v)) if v0 < v => (i, v)::tail
+    }
+    slides.sortWith{ case ((i0, v0), (i, v)) => (v0 == v && i0 <= i) || v0 > v}
   }
 
-  def insertPWM(sm: DenseMatrix[Double], pos: Int): PWM = {
-    PWM(indexes, insert(matrix, sm, pos), totalMissScore, gapMultiplier)
-  }
-
-  def insert(m: DenseMatrix[Double], sm: DenseMatrix[Double], pos: Int): DenseMatrix[Double] = {
-    DenseMatrix.horzcat(DenseMatrix.horzcat(m(::, 0 until pos), sm), m(::, (pos + sm.cols) until m.cols ))
+  /**
+    * new PWM with insertions of the sequence into one or more positions
+    * @param sequence sequence to be inserted
+    * @param value value with wich to fill in sequence PWM
+    * @param positions positions to which make the insertions
+    * @return
+    */
+  def withInsertions(sequence: String, value: Double, positions: Int*): PWM = {
+    val sm = sequenceToMatrix(sequence, value)
+    val newMat = positions.foldLeft(this.matrix){ case (acc, pos) => PWM.insertMatrix(acc, sm, pos) }
+    copy(matrix = newMat)
   }
 
   override def toString: String = PWM.matrixToString(indexes, this.matrix)
   lazy val toLines: Seq[String] = PWM.matrixToLines(indexes, this.matrix)
 
-  lazy val sumRows: DenseMatrix[Double] = matrix * oneRow.t
-  lazy val sumCols: DenseMatrix[Double] = oneColumn.t * matrix
-  //lazy val relativeFrequencies: DenseMatrix[Double] = matrix /:/  (oneColumn * sumCols)
 
 }
 
