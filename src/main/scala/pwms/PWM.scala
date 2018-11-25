@@ -119,8 +119,13 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   //lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
 
-  lazy val logOddsTable: DenseMatrix[Double] = log( oddsTable ).map(v=> if(v.isInfinity) totalMissScore else v)
-  lazy val weightedLogOddsTable: DenseMatrix[Double] = logOddsTable  *:*  colWeights
+  lazy val logOddsTable: DenseMatrix[Double] = log( oddsTable ).map(v=>if(v.isInfinity) totalMissScore else v )
+  lazy val negativeLogOdds: DenseMatrix[Double] = logOddsTable.map(v => if(v < 0) v else 0.0)
+  lazy val positiveLogOdds: DenseMatrix[Double] = logOddsTable.map(v => if(v >= 0) v else 0.0)
+
+  //.map{ case v => if(v.isInfinity) totalMissScore else v}
+  //logOddsTable *:* colWeights
+  lazy val weightedLogOddsTable: DenseMatrix[Double] =  positiveLogOdds + (negativeLogOdds  *:*  colWeights) //just a hack to increase importance of high values
 
   def sequenceToMatrix(seq: String, value: Double = 1.0): DenseMatrix[Double] = {
     val m = DenseMatrix.zeros[Double](matrix.rows, seq.length)
