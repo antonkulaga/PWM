@@ -14,10 +14,10 @@ class GeneralPWMSpec extends WordSpec with Matchers with BasicPWMSpec {
       val gapMultiplier = 4.0
       val p = loadTestPWM(totalMiss = defaultTotalMiss, gapMultiplier)
       val lines2: Seq[String] = p.toLines
-      val p2: PWM = PWM.parse(lines2, delimiter = "\t", defaultTotalMiss, gapMultiplier)
+      val p2: PWM = PWM.parse(lines2, defaultTotalMiss, gapMultiplier)
       p shouldEqual p2
       val lines3 = scala.io.Source.fromResource("to_parse.tsv").getLines().toList
-      val p3: PWM = PWM.parse(lines3, delimiter = "\t", defaultTotalMiss, gapMultiplier)
+      val p3: PWM = PWM.parse(lines3, defaultTotalMiss, gapMultiplier)
       p shouldEqual p3
       //    (lines: Seq[String], delimiter: String, totalMissScore: Double, skipGaps: Boolean = false)
     }

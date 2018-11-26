@@ -15,7 +15,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     val a = Random.nextInt(half - seq.length -1 )
     val b = half + Random.nextInt(half - seq.length -1 )
     val updated = p.withInsertions(seq, 1000, a).withInsertions(seq, 1000, b)
-    val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0, 0)
+    val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
 
@@ -55,8 +55,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     ins1 shouldEqual updated.readBest(a, seq.length)
     ins2 shouldEqual updated.readBest(b, seq.length)
 
-    val minScore: Double = defaultTotalMiss * miss2
-    val ( a1, _)::(b1, _)::tail = updated.candidates(seq, 1, minScore)
+    val ( a1, _)::(b1, _)::tail = updated.candidates(seq, 1)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
 

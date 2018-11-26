@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.7"
 
-version := "0.0.1"
+version := "0.0.2"
 
 coursierMaxIterations := 200
 
@@ -34,6 +34,7 @@ libraryDependencies ++= Seq(
  "org.typelevel" %% "cats-core" % "1.4.0",
  "org.scalanlp" %% "breeze" % "1.0-RC2",
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
+ "org.wvlet.airframe" %% "airframe-log" % "0.73",
  "com.github.pathikrit" %% "better-files" % "3.6.0",
  "com.monovore" %% "decline" % "0.5.1",
  "com.monovore" %% "decline-refined" % "0.5.1",

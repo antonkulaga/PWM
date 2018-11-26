@@ -1,4 +1,5 @@
 package pwms
+import better.files.File
 import breeze.linalg._
 import breeze.numerics._
 import breeze.stats._
@@ -27,7 +28,7 @@ object PWM {
 
 
   def insertMatrix(m: DenseMatrix[Double], sm: DenseMatrix[Double], pos: Int): DenseMatrix[Double] = {
-    DenseMatrix.horzcat(DenseMatrix.horzcat(m(::, 0 until pos), sm), m(::, pos until m.cols ))
+    DenseMatrix.horzcat(DenseMatrix.horzcat(m(::, 0 until pos), sm), m(::, (pos + sm.cols) until m.cols ))
   }
 
   /**
@@ -100,6 +101,7 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   }
 
   def hasGaps: Boolean = indexes.contains("-")
+  //lazy val noGapsMatrix = if(hasGaps) matrix.fil else matrix
 
   //zero if no gaps
   lazy val gapRow: DenseMatrix[Double] = if(hasGaps) matrix(indexes("-"), ::).inner.asDenseMatrix else  DenseMatrix.zeros[Double](1, matrix.cols)
@@ -133,7 +135,7 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   //logOddsTable *:* colWeights
   lazy val weightedLogOddsTable: DenseMatrix[Double] =  positiveLogOdds + (negativeLogOdds  *:*  colWeights) //just a hack to increase importance of high values
 
-  def sequenceToMatrix(seq: String, value: Double = 1.0): DenseMatrix[Double] = {
+  def sequenceToMatrix(seq: String, value: Double): DenseMatrix[Double] = {
     val m = DenseMatrix.zeros[Double](matrix.rows, seq.length)
     val ind: Seq[(Char, Int)] = seq.zipWithIndex
     for{
@@ -154,27 +156,26 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     for { i <- 0 until matrix.cols - window } yield weightedLogOddsTable(::, i until i + window)
   }
 
-  protected def slideSequence(sequence: String): Seq[(Int, Double)] = {
-    val sm = sequenceToMatrix(sequence)
-    val window = sm.cols
-    for {
-      i <- 0 until matrix.cols - window
-      score = scoreAt(sm, i)
-    } yield i -> score
+  protected def slideSequence(sequence: String, mult: Double = 1.0): Seq[(Int, Double)] = {
+    val sm = sequenceToMatrix(sequence, mult)
+    val end = matrix.cols - sm.cols
+    for { i <- 0 until end } yield i -> scoreAt(sm, i)
   }
 
   def scoreAt(sequence: String, i: Int): Double = {
-    val sm = sequenceToMatrix(sequence)
+    val sm = sequenceToMatrix(sequence, 1.0)
     scoreAt(sm, i)
   }
+
   def scoreAt(sm: DenseMatrix[Double], i: Int): Double = {
-    val window = sm.cols
-    sum(weightedLogOddsTable(::, i until i + window) *:* sm)
+    val end = sm.cols + i
+    sum(weightedLogOddsTable(::, i until end) *:* sm)
   }
 
-  lazy val consensus = readBest(0, this.matrix.cols)
+  def consensus(gaps: Boolean = true): String = readBest(0, this.matrix.cols, gaps)
 
-  def readBest(position: Int, length: Int): String = {
+  def readBest(position: Int, length: Int, gaps: Boolean = true): String = {
+    //val mat = if(gaps)
     val m: DenseMatrix[Double] = matrix(::, position until (position + length))
     val args: Transpose[DenseVector[Int]] = argmax(m(::, *))
     (for(i <- args.inner) yield indexesInverted(i)).reduce(_ + _)
@@ -186,8 +187,8 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @param distance minimal distance between insertions
     * @return
     */
-  def candidates(seq: String, distance: Int = 0, minimalScore: Double = 0.0): List[(Int, Double)] = {
-    val slide: Seq[(Int, Double)] = slideSequence(seq).filter(_._2 > minimalScore)
+  def candidates(seq: String, distance: Int = 0): List[(Int, Double)] = {
+    val slide: Seq[(Int, Double)] = slideSequence(seq)//.filter(_._2 > minimalScore)
     val slides: List[(Int, Double)] = slide.foldLeft(List.empty[(Int, Double)]){
       case (Nil, (i, v)) => (i, v)::Nil
       case ( (i0, v0)::tail, (i, v) ) if i0 + distance + seq.length < i => (i, v)::(i0, v0)::tail
@@ -210,9 +211,15 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     copy(matrix = newMat)
   }
 
-  override def toString: String = PWM.matrixToString(indexes, this.matrix)
+  override def toString: String = toString("\t")
+  def toString(delimiter: String): String = PWM.matrixToString(indexes, this.matrix, delimiter)
   lazy val toLines: Seq[String] = PWM.matrixToLines(indexes, this.matrix)
 
+  def write(file: File, delimiter: String = "\t", overwrite: Boolean = true): File = {
+    val str: String = this.toString(delimiter)
+    if(overwrite) file.overwrite(str) else file.write(str)
+    file
+  }
 
 }
 
