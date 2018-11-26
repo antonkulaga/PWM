@@ -6,7 +6,10 @@ import cats._
 import cats.implicits._
 
 import scala.collection.{SortedMap, immutable}
-
+import eu.timepit.refined._
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.auto._
+import eu.timepit.refined.numeric._
 
 /**
   * Companion object for PWM with some useful static methods
@@ -38,12 +41,15 @@ object PWM {
   }
 
 
-  def parse(lines: Seq[String], delimiter: String, totalMissScore: Double, gapMultiplier: Double = 10): PWM= {
+  def parse(lines: Seq[String], totalMissScore: Double, gapMultiplier: Double = 10, delimiter: String = "auto"): PWM= {
     require(lines.nonEmpty, "Matrix cannot be empty")
     val h = lines.head
+    val del = if(delimiter=="auto") {
+      Map(h.count(_=='\t') -> "\t", h.count(_==';') -> ";", h.count(_==',') ->",").maxBy(_._1)._2
+    } else delimiter
     val skipGaps = gapMultiplier == 0.0
-    if(h.isEmpty || h=="\n" || h.startsWith(s""""V1"${delimiter}"V2"${delimiter}""")) parse(lines.tail, delimiter, totalMissScore, gapMultiplier) else {
-      val mat= lines.map(_.split(delimiter))
+    if(h.isEmpty || h=="\n" || h.startsWith(s""""V1"${del}"V2"${del}""")) parse(lines.tail, totalMissScore, gapMultiplier, del) else {
+      val mat= lines.map(_.split(del))
       val namedRows = mat.map(line=> line.head.replace("\"", "") -> line.tail).filter(_._1 != "-" || !skipGaps).sortBy(_._1)
       val indexes: SortedMap[String, Int] = SortedMap(namedRows.map(_._1).zipWithIndex:_*)
       val rows = namedRows.map(_._2.map(v=>v.toDouble))

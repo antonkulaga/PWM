@@ -36,7 +36,8 @@ libraryDependencies ++= Seq(
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
  "com.github.pathikrit" %% "better-files" % "3.6.0",
  "com.monovore" %% "decline" % "0.5.1",
- "org.scalatest" %% "scalatest" % "3.0.5"
+ "com.monovore" %% "decline-refined" % "0.5.1",
+ "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF")

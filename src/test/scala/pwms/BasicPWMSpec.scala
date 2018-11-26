@@ -18,7 +18,7 @@ trait BasicPWMSpec {
 
   def loadTestPWM(totalMiss: Double = -defaultTotalMiss, gapMultiplier: Double = defaultGapMultiplier): PWM = {
     val lines1 = scala.io.Source.fromResource("to_parse.csv").getLines().toList
-    PWM.parse(lines1, ";", totalMiss, gapMultiplier)
+    PWM.parse(lines1,  totalMiss, gapMultiplier)
   }
 
   lazy val indexes: Map[Char, Int] = Map('A'-> 0, 'T'->1, 'G'->2, 'C'->3)
