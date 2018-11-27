@@ -2,13 +2,13 @@ import sbt.Keys._
 
 import sbt._
 
-name := "PWM"
+name := "pwm"
 
 organization := "group.aging-research"
 
 scalaVersion :=  "2.12.7"
 
-version := "0.0.2"
+version := "0.0.3"
 
 coursierMaxIterations := 200
 
@@ -60,7 +60,6 @@ maintainer in Docker := "Anton Kulaga <antonkulaga@gmail.com>"
 maintainer := "Anton Kulaga <antonkulaga@gmail.com>"
 
 dockerRepository := Some("quay.io/comp-bio-aging")
-
 
 enablePlugins(JavaAppPackaging, DockerPlugin)
 

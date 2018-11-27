@@ -22,7 +22,7 @@ trait InsertCommands extends MergeCommands{
   ) {
     (sequence, path, outputFile, positions, value, verbose, delimiter).mapN { (seq, f, o, ps, v, verb, d) =>
       val (where, pwm) = LoaderPWM.load(f, delimiter = d).head
-      val u = pwm.withInsertions(seq, v, ps.toList:_*)
+      val u = pwm.withReplacement(seq, v, ps.toList:_*)
       info(s"reading PWM from ${where}")
       u.write(o)
       info(s"PWM with insertion written to ${o.toFile.toScala.path}")
@@ -48,7 +48,7 @@ trait InsertCommands extends MergeCommands{
     val ns = Math.min(number, cand.size)
     val positions: Seq[Int] = cand.take(ns).map(_._1)
     val name = s"${sequence}_x${ns}_at_${positions.mkString("_")}_${File(f).nameWithoutExtension}.tsv"
-    val upd = pwm.withInsertions(sequence, value, positions: _*)
+    val upd = pwm.withReplacement(sequence, value, positions: _*)
     val fl = if(output.isRegularFile) output else output / name
     info(s"writing insertion to ${fl.path} with length ${upd.matrix.cols} and mean coverage ${upd.meanCol}")
     upd.write(fl, overwrite = true)

@@ -5,12 +5,9 @@ import breeze.numerics._
 import breeze.stats._
 import cats._
 import cats.implicits._
+import pwms.functions._
 
 import scala.collection.{SortedMap, immutable}
-import eu.timepit.refined._
-import eu.timepit.refined.api.Refined
-import eu.timepit.refined.auto._
-import eu.timepit.refined.numeric._
 
 /**
   * Companion object for PWM with some useful static methods
@@ -25,12 +22,6 @@ object PWM {
         DenseMatrix.horzcat(a, DenseMatrix.zeros[Double](a.rows, b.cols - a.cols)) + b
       else
         addMatrices(b, a)
-
-
-  def insertMatrix(m: DenseMatrix[Double], sm: DenseMatrix[Double], pos: Int): DenseMatrix[Double] = {
-    DenseMatrix.horzcat(DenseMatrix.horzcat(m(::, 0 until pos), sm), m(::, (pos + sm.cols) until m.cols ))
-  }
-
   /**
     * Semigroup for adding two PWMs together
     */
@@ -42,6 +33,14 @@ object PWM {
   }
 
 
+  /**
+    * Parses lines of strings as PWM
+    * @param lines
+    * @param totalMissScore
+    * @param gapMultiplier
+    * @param delimiter
+    * @return
+    */
   def parse(lines: Seq[String], totalMissScore: Double, gapMultiplier: Double = 10, delimiter: String = "auto"): PWM= {
     require(lines.nonEmpty, "Matrix cannot be empty")
     val h = lines.head
@@ -81,6 +80,12 @@ object PWM {
   */
 case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], totalMissScore: Double, gapMultiplier: Double = 5.0) {
 
+  private val columnOnes: DenseMatrix[Double] = DenseMatrix.ones[Double](matrix.rows, 1)
+  private val rowOnes: DenseMatrix[Double] = DenseMatrix.ones[Double](1, matrix.cols)
+
+  lazy val matrixNoGaps: DenseMatrix[Double] = if(hasGaps) matrix.skipRows(indexes("-"), 1) else matrix
+  private lazy val columnOnesNoGaps = DenseMatrix.ones[Double](matrixNoGaps.rows, 1)
+
   val indexesInverted: SortedMap[Int, String] = indexes.map(_.swap)
 
   def apply(str: String): Transpose[DenseVector[Double]] = {
@@ -89,43 +94,33 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     matrix(num, ::)
   }
 
-  /**
-    * Moves PWM right by adding zero columns to the left
-    * @param num columns number to add
-    * @return new PWM
-    */
-  def shift(num: Int, values: Double): PWM = num match {
-    case 0 => this
-    case n if n> 0 => this.copy(matrix = DenseMatrix.horzcat(DenseMatrix.zeros[Double](matrix.rows, num), matrix) )
-    case n if n < 0=> this.copy(matrix = DenseMatrix.horzcat(matrix, DenseMatrix.zeros[Double](matrix.rows, num)) )
-  }
-
   def hasGaps: Boolean = indexes.contains("-")
   //lazy val noGapsMatrix = if(hasGaps) matrix.fil else matrix
 
   //zero if no gaps
   lazy val gapRow: DenseMatrix[Double] = if(hasGaps) matrix(indexes("-"), ::).inner.asDenseMatrix else  DenseMatrix.zeros[Double](1, matrix.cols)
-  protected lazy val gapMatrix: DenseMatrix[Double] = tile(gapRow, matrix.rows, 1)
+  lazy val gapMatrix: DenseMatrix[Double] = tile(gapRow, matrix.rows, 1)
 
-  protected lazy val oneColumn: DenseMatrix[Double] = DenseMatrix.ones[Double](matrix.rows, 1)
-  protected lazy val oneRow: DenseMatrix[Double] = DenseMatrix.ones[Double](1, matrix.cols)
 
-  protected lazy val backgroundColumn: DenseMatrix[Double] = oneColumn / (matrix.rows.toDouble - hasGaps.compare(false))
+  protected lazy val backgroundColumn: DenseMatrix[Double] = columnOnes / (matrix.rows.toDouble - hasGaps.compare(false))
 
   lazy val backgroundMatrix: DenseMatrix[Double] = tile(backgroundColumn, 1, matrix.cols)
 
-  lazy val sumRows: DenseMatrix[Double] = matrix * oneRow.t
-  lazy val sumCols: DenseMatrix[Double] = oneColumn.t * matrix
+  lazy val sumRows: DenseMatrix[Double] = matrix * rowOnes.t
+  lazy val sumCols: DenseMatrix[Double] = columnOnes.t * matrix
   lazy val meanCol: Double = mean(sumCols)
   lazy val colWeights: DenseMatrix[Double] = tile(sumCols / meanCol, matrix.rows, 1 )
 
   //lazy val meanSumCols: DenseMatrix[Double] = { DenseMatrix.fill[Double](1, matrix.cols)(meanCol)}
 
-  lazy val relativeFrequencies: DenseMatrix[Double] = (matrix  +:+ (gapMatrix * gapMultiplier)) /:/  (oneColumn * sumCols)
+  lazy val relativeFrequencies: DenseMatrix[Double] = (matrix  +:+ (gapMatrix * gapMultiplier)) /:/  (columnOnes * sumCols)
+
+  lazy val relativeFrequenciesPure: DenseMatrix[Double] = if(hasGaps) {
+    val gapsMatrixPure = tile(gapRow, matrixNoGaps.rows, 1) /:/ matrixNoGaps.rows.toDouble
+    (matrixNoGaps + gapsMatrixPure ) /:/ (columnOnesNoGaps * sumCols)
+  }  else matrix  /:/  (columnOnes * sumCols)
 
   lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
-
-  //lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
 
   lazy val logOddsTable: DenseMatrix[Double] = log( oddsTable ).map(v=>if(v.isInfinity) totalMissScore else v )
   lazy val negativeLogOdds: DenseMatrix[Double] = logOddsTable.map(v => if(v < 0) v else 0.0)
@@ -205,9 +200,9 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @param positions positions to which make the insertions
     * @return
     */
-  def withInsertions(sequence: String, value: Double, positions: Int*): PWM = {
+  def withReplacement(sequence: String, value: Double, positions: Int*): PWM = {
     val sm = sequenceToMatrix(sequence, value)
-    val newMat = positions.foldLeft(this.matrix){ case (acc, pos) => PWM.insertMatrix(acc, sm, pos) }
+    val newMat = positions.foldLeft(this.matrix){ case (acc, pos) => acc.replaceColumns(sm, pos) }
     copy(matrix = newMat)
   }
 
@@ -221,5 +216,8 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     file
   }
 
-}
+  def getSample(): String = {
+    randomize(relativeFrequenciesPure(::, *)).inner.map(v=>indexesInverted(v.toInt)).reduce(_ + _)
+  }
 
+}

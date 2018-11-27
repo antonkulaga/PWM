@@ -14,7 +14,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     val half = p.matrix.cols / 2
     val a = Random.nextInt(half - seq.length -1 )
     val b = half + Random.nextInt(half - seq.length -1 )
-    val updated = p.withInsertions(seq, 1000, a).withInsertions(seq, 1000, b)
+    val updated = p.withReplacement(seq, 1000, a).withReplacement(seq, 1000, b)
     val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
@@ -51,7 +51,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     //println(seq, ins2)
     assert(countMismatches(ins2, seq) == miss2, s"insert should contain ${miss2} mismatches, original $seq, missmatched $ins1")
 
-    val updated = p.withInsertions(ins1, 1000, a).withInsertions(ins2, 1000, b)
+    val updated = p.withReplacement(ins1, 1000, a).withReplacement(ins2, 1000, b)
     ins1 shouldEqual updated.readBest(a, seq.length)
     ins2 shouldEqual updated.readBest(b, seq.length)
 
@@ -111,7 +111,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
         val p = loadTestPWM(defaultTotalMiss, gapMultiplier = 0)
         val pos = 4
 
-        val updatedLow = p.withInsertions(toInsert, 696.0, pos)
+        val updatedLow = p.withReplacement(toInsert, 696.0, pos)
         val lowHead = updatedLow.candidates(seq, 1).head
         println(s"LOW HEAD = $lowHead")
         //println("low weights")
@@ -119,7 +119,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
         //println(updatedLow.weightedLogOddsTable.toString(1000,1000))
 
         lowHead._1 shouldEqual(pos)
-        val updatedHigh = p.withInsertions(toInsert, 100000, pos)
+        val updatedHigh = p.withReplacement(toInsert, 100000, pos)
         val highHead = updatedHigh.candidates(seq, 1).head
         println(updatedHigh.weightedLogOddsTable.toString(1000,1000))
         println(s"HIGH HEAD = $highHead")
