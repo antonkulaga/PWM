@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.7"
 
-version := "0.0.3"
+version := "0.0.5"
 
 coursierMaxIterations := 200
 
@@ -28,16 +28,17 @@ resolvers += Resolver.mavenLocal
 
 resolvers += Resolver.sonatypeRepo("releases")
 
-addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.0").cross(CrossVersion.full))
+addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.1").cross(CrossVersion.full))
 
 libraryDependencies ++= Seq(
  "org.typelevel" %% "cats-core" % "1.4.0",
  "org.scalanlp" %% "breeze" % "1.0-RC2",
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
- "org.wvlet.airframe" %% "airframe-log" % "0.73",
+ "org.wvlet.airframe" %% "airframe-log" % "0.74",
  "com.github.pathikrit" %% "better-files" % "3.6.0",
- "com.monovore" %% "decline" % "0.5.1",
- "com.monovore" %% "decline-refined" % "0.5.1",
+ "com.monovore" %% "decline" % "0.6.0",
+ "com.monovore" %% "decline-refined" % "0.6.0",
+ "group.aging-research" %% "assembly" % "0.0.2",
  "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 

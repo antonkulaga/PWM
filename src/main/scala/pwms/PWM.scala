@@ -78,13 +78,11 @@ object PWM {
   * @param totalMissScore penalty for the mismatches
   * @param gapMultiplier make gaps easier for insertions
   */
-case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], totalMissScore: Double, gapMultiplier: Double = 5.0) {
+case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], totalMissScore: Double, gapMultiplier: Double = 5.0) extends assembly.synthesis.SequenceTemplate {
 
-  private val columnOnes: DenseMatrix[Double] = DenseMatrix.ones[Double](matrix.rows, 1)
-  private val rowOnes: DenseMatrix[Double] = DenseMatrix.ones[Double](1, matrix.cols)
-
-  lazy val matrixNoGaps: DenseMatrix[Double] = if(hasGaps) matrix.skipRows(indexes("-"), 1) else matrix
-  private lazy val columnOnesNoGaps = DenseMatrix.ones[Double](matrixNoGaps.rows, 1)
+  //lazy val matrixNoGaps: DenseMatrix[Double] = if(hasGaps) matrix.skipRows(indexes("-"), 1) else matrix
+  //lazy val noGaps =
+ // private lazy val columnOnesNoGaps = DenseMatrix.ones[Double](matrixNoGaps.rows, 1)
 
   val indexesInverted: SortedMap[Int, String] = indexes.map(_.swap)
 
@@ -102,23 +100,27 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   lazy val gapMatrix: DenseMatrix[Double] = tile(gapRow, matrix.rows, 1)
 
 
-  protected lazy val backgroundColumn: DenseMatrix[Double] = columnOnes / (matrix.rows.toDouble - hasGaps.compare(false))
+  lazy val backgroundMatrix: DenseMatrix[Double] = DenseMatrix.ones[Double](matrix.rows, matrix.cols) /:/ (matrix.rows.toDouble - hasGaps.compare(false))
 
-  lazy val backgroundMatrix: DenseMatrix[Double] = tile(backgroundColumn, 1, matrix.cols)
+  lazy val sumRows: DenseMatrix[Double] = sum(matrix(*, ::)).toDenseMatrix
+  lazy val sumCols: DenseMatrix[Double] = sum(matrix(::, *)).inner.toDenseMatrix
 
-  lazy val sumRows: DenseMatrix[Double] = matrix * rowOnes.t
-  lazy val sumCols: DenseMatrix[Double] = columnOnes.t * matrix
   lazy val meanCol: Double = mean(sumCols)
   lazy val colWeights: DenseMatrix[Double] = tile(sumCols / meanCol, matrix.rows, 1 )
+  lazy val relativeFrequencies: DenseMatrix[Double] = (matrix  +:+ (gapMatrix * gapMultiplier)) /:/  tile(sumCols, matrix.rows, 1)
 
-  //lazy val meanSumCols: DenseMatrix[Double] = { DenseMatrix.fill[Double](1, matrix.cols)(meanCol)}
 
-  lazy val relativeFrequencies: DenseMatrix[Double] = (matrix  +:+ (gapMatrix * gapMultiplier)) /:/  (columnOnes * sumCols)
+  protected lazy val gapsMatrixPure: DenseMatrix[Double] = tile(gapRow, matrix.rows, 1) /:/ (matrix.rows -1).toDouble
 
-  lazy val relativeFrequenciesPure: DenseMatrix[Double] = if(hasGaps) {
-    val gapsMatrixPure = tile(gapRow, matrixNoGaps.rows, 1) /:/ matrixNoGaps.rows.toDouble
-    (matrixNoGaps + gapsMatrixPure ) /:/ (columnOnesNoGaps * sumCols)
-  }  else matrix  /:/  (columnOnes * sumCols)
+  lazy val matrixNoGaps: DenseMatrix[Double] = matrix.replaceRows(DenseMatrix.zeros[Double](1, matrix.cols), indexes("-"))
+
+  lazy val sumColsNoGaps: DenseMatrix[Double] = sum(matrixNoGaps(::, *)).inner.toDenseMatrix
+
+
+  lazy val relativeFrequenciesPure: DenseMatrix[Double] = if(hasGaps)
+    (matrixNoGaps + gapsMatrixPure ) /:/  tile(sumColsNoGaps, matrixNoGaps.rows, 1)
+  else
+    relativeFrequencies
 
   lazy val oddsTable: DenseMatrix[Double] =  relativeFrequencies / backgroundMatrix
 
@@ -126,8 +128,6 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   lazy val negativeLogOdds: DenseMatrix[Double] = logOddsTable.map(v => if(v < 0) v else 0.0)
   lazy val positiveLogOdds: DenseMatrix[Double] = logOddsTable.map(v => if(v >= 0) v else 0.0)
 
-  //.map{ case v => if(v.isInfinity) totalMissScore else v}
-  //logOddsTable *:* colWeights
   lazy val weightedLogOddsTable: DenseMatrix[Double] =  positiveLogOdds + (negativeLogOdds  *:*  colWeights) //just a hack to increase importance of high values
 
   def sequenceToMatrix(seq: String, value: Double): DenseMatrix[Double] = {
@@ -171,7 +171,8 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   def readBest(position: Int, length: Int, gaps: Boolean = true): String = {
     //val mat = if(gaps)
-    val m: DenseMatrix[Double] = matrix(::, position until (position + length))
+    val mat = if(gaps) matrix else matrixNoGaps
+    val m: DenseMatrix[Double] = mat(::, position until (position + length))
     val args: Transpose[DenseVector[Int]] = argmax(m(::, *))
     (for(i <- args.inner) yield indexesInverted(i)).reduce(_ + _)
   }
@@ -216,8 +217,10 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     file
   }
 
-  def getSample(): String = {
-    randomize(relativeFrequenciesPure(::, *)).inner.map(v=>indexesInverted(v.toInt)).reduce(_ + _)
+  def randomize: String = getSample
+
+  def getSample: String = {
+    pwms.functions.randomize(relativeFrequenciesPure(::, *)).inner.map(v=>indexesInverted(v.toInt)).reduce(_ + _)
   }
 
 }

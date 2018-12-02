@@ -9,11 +9,14 @@ import com.monovore.decline._
 import pwms.{LoaderPWM, PWM}
 import wvlet.log.LogSupport
 
+/***
+  * Commands to show list of files with PWMs and to merge them
+  */
 trait ListCommand extends LogSupport{
 
-  protected lazy val path = Opts.argument[Path]("file or folder to read from")
-  protected lazy val delimiter = Opts.option[String](long = "delimiter", short = "d", help = "delimiter to be used when parsing PWMs").withDefault("auto")
-  protected lazy val verbose = Opts.flag("verbose", short="v", help="show values of the found PWMs").map(_=>true).withDefault(false)
+  protected lazy val path: Opts[Path] = Opts.argument[Path]("file or folder to read from")
+  protected lazy val delimiter: Opts[String] = Opts.option[String](long = "delimiter", short = "d", help = "delimiter to be used when parsing PWMs").withDefault("auto")
+  protected lazy val verbose: Opts[Boolean] = Opts.flag("verbose", short="v", help="show values of the found PWMs").map(_=>true).withDefault(false)
 
   protected lazy val listCommand =Command(
     name = "list",

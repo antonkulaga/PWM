@@ -36,17 +36,19 @@ trait ConsensusCommands extends ListCommand{
     name = "random",
     header = "gives random value generated from PWM"
   ) {
-    (filePWM, gaps, verbose, delimiter).mapN{ (f, g, verb, d)=>
+    (filePWM, verbose, delimiter).mapN{ (f, verb, d)=>
       println(s"loading file ${f.toFile.toScala.path}")
       val pwm = LoaderPWM.loadFile(f, delimiter = d)
       if(verb){
         println("PWM values are:")
         println(pwm.toString)
       }
-      println("consensus is:")
-      println(pwm.consensus(true))
+      println("generating random sequence:")
+      println(pwm.getSample)
     }
   }
 
   protected val randomSubcommand = Opts.subcommand(random)
+
+
 }
