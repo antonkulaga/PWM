@@ -150,6 +150,31 @@ Parameters *miss* and *gapmult* are used to tune the algorithm.
 *miss* is a negative number that means the penalty for the mismatch
 *gapmult* increases the importance of gaps, and thus - ability to insert any base into the position. 
 
+generate subcommand
+-------------------
+```
+Usage: PWM generate [--delimiter <string>] [--verbose] [--tries <integer>] [--max_repeats <integer>] --avoid <string> [--avoid <string>]... [--gc_min <floating-point>] [--gc_max <floating-point>] <file or folder to read from> <output file>
+Generates from PWM
+Options and flags:
+    --help
+        Display this help text.
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
+    --verbose, -v
+        show values of the found PWMs
+    --tries <integer>, -t <integer>
+        Maximum number of attempts to generate a good sequence
+    --max_repeats <integer>, -r <integer>, -e <integer>, -p <integer>
+        Maximum repeat length
+    --avoid <string>, -a <string>
+        Avoid enzymes
+    --gc_min <floating-point>, -g <floating-point>, -m <floating-point>, -i <floating-point>, -n <floating-point>
+        minimum GC content
+    --gc_max <floating-point>, -g <floating-point>, -m <floating-point>, -a <floating-point>, -x <floating-point>
+        maximum GC content
+```
+Generates sequences PWMs based on synthesis parameters and restriction sides to avoid.
+
 Building from source
 ====================
 

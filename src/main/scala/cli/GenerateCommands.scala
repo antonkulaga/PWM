@@ -23,10 +23,10 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands {
 
   val avoid_enzymes = Opts.options[String](long = "avoid", short = "a", help = "Avoid enzymes")
 
-  val max_repeat = Opts.option[Int](long = "max_repeats", short = "rep", help = "Maximum repeat length").withDefault(20)
+  val max_repeat = Opts.option[Int](long = "max_repeats", short = "rep", help = "Maximum repeat length").withDefault(19)
 
-  val gc_min = Opts.option[Double](long = "gc_min", short = "gmin", help = "minimum GC content").withDefault(0.3)
-  val gc_max = Opts.option[Double](long = "gc_max", short = "gmax", help = "maximum GC content").withDefault(0.64)
+  val gc_min = Opts.option[Double](long = "gc_min", short = "gmin", help = "minimum GC content").withDefault(0.25)
+  val gc_max = Opts.option[Double](long = "gc_max", short = "gmax", help = "maximum GC content").withDefault(0.7)
 
 
   protected lazy val synthesis = Command(
@@ -47,18 +47,31 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands {
 
   protected val synthesisSubcommand = Opts.subcommand(synthesis)
 
-  val max_tries = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(2500)
+  val max_tries = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(3000)
 
+
+  case class GenerationParametersPWM(template: PWM,
+                       maxRepeatSize: Int,
+                       contentGC: ContentGC,
+                       enzymes: RestrictionEnzymes) extends GenerationParameters {
+    override def checkEnzymes(sequence: String): Boolean = !enzymes.canCut(sequence, true) //temporal bug fix
+
+    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-")
+
+  }
 
 //filePWM
   protected lazy val generate: Command[Unit] = Command(
     name = "generate", header = "Generates from PWM"
   ){
-    (path,  delimiter, outputFile, max_tries, max_repeat, avoid_enzymes, gc_min, gc_max).mapN{ (p, d, o, tries, rep,  avoid, g_min, g_max) =>
+    (path,  delimiter, outputFile, verbose, max_tries, max_repeat, avoid_enzymes, gc_min, gc_max).mapN{ (p, d, o, v, tries, rep,  avoid, g_min, g_max) =>
+
+      val avoidList = RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid.toList.contains(e)}
+      println(s"From avoided enzymes (${avoid.toList.mkString(",")}) following enzymes where found: ${avoidList}")
       val restrictions =  RestrictionEnzymes(RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid.toList.contains(e)})
       val f = o.toFile.toScala
       val fileMap: Map[String, PWM] = LoaderPWM.load(p.toFile.toScala, delimiter = d)
-      def params(pwm: PWM)  = GenerationParameters(pwm, rep, ContentGC.default.copy(minTotal = g_min, maxTotal = g_max), restrictions)
+      def params(pwm: PWM)  =  GenerationParametersPWM(pwm, rep, ContentGC.default.copy(minTotal = g_min, maxTotal = g_max), restrictions)
       println(s"${fileMap.size} PWMs processed for path ${p.toFile.toScala.path}!")
       val fasta = fileMap.foldLeft(""){
         case (acc, (f, pwm)) =>
@@ -66,8 +79,9 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands {
           val p = params(pwm)
           Try{ SequenceGenerator.randomize(p, tries) } match {
             case Success(str) =>
-              val name = s""">${f} GC = ${p.contentGC.ratioGC(str)}, longest repeat = ${p.findLongestRepeats(str).head._1.size}"""
-              println(s"successfully generate good to synthesize sequence for ${name}")
+              val stat = s""">${f} GC = ${p.contentGC.ratioGC(str)}, longest repeat = ${p.findLongestRepeats(str).head._1.size}"""
+              println(s"successfully generate good to synthesize sequence for ${stat}")
+              val name = if(v) stat else ">" + File(f).nameWithoutExtension
               acc + name + "\n" + str + "\n"
             case scala.util.Failure(exception) =>
               println(s"could not generate good to synthesize sequence for ${f} with ${tries} attempts")

@@ -17,7 +17,7 @@ object randomize extends UFunc {
         traverse.traverse(t, new ValuesVisitor[Double] {
           def visit(a: Double): Unit = if(res == -1.0) {
             sum += a
-            if(rand <= sum) res = i
+            if(rand < sum) res = i
             i +=1
           }
           def zeros(count: Int, zeroValue: Double): Unit = {}
