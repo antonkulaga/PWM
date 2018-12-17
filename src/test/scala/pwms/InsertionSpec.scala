@@ -18,6 +18,9 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
+    updated.candidates(seq, 0, begin = b1).head._1 shouldEqual b1 //checking limits
+    updated.candidates(seq, 0, end = b1-1).exists{ case (i, _) => i == a1} shouldEqual true
+    updated.candidates(seq, 0, end = b1-1).exists{ case (i, _) => i == b1} shouldEqual false
 
     assert(a == a1,
       s"""
@@ -118,7 +121,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
         //println(updatedLow.colWeights.toString(1000,1000))
         //println(updatedLow.weightedLogOddsTable.toString(1000,1000))
 
-        lowHead._1 shouldEqual(pos)
+        lowHead._1 shouldEqual pos
         val updatedHigh = p.withReplacement(toInsert, 100000, pos)
         val highHead = updatedHigh.candidates(seq, 1).head
         println(updatedHigh.weightedLogOddsTable.toString(1000,1000))

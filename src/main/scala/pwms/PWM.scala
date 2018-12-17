@@ -151,10 +151,10 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     for { i <- 0 until matrix.cols - window } yield weightedLogOddsTable(::, i until i + window)
   }
 
-  protected def slideSequence(sequence: String, mult: Double = 1.0): Seq[(Int, Double)] = {
+  protected def slideSequence(sequence: String, mult: Double = 1.0, begin: Int = 0, end: Int = Int.MaxValue): Seq[(Int, Double)] = {
     val sm = sequenceToMatrix(sequence, mult)
-    val end = matrix.cols - sm.cols
-    for { i <- 0 until end } yield i -> scoreAt(sm, i)
+    val finish = Math.min(matrix.cols - sm.cols, end)
+    for { i <- begin until finish } yield i -> scoreAt(sm, i)
   }
 
   def scoreAt(sequence: String, i: Int): Double = {
@@ -183,8 +183,8 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @param distance minimal distance between insertions
     * @return
     */
-  def candidates(seq: String, distance: Int = 0): List[(Int, Double)] = {
-    val slide: Seq[(Int, Double)] = slideSequence(seq)//.filter(_._2 > minimalScore)
+  def candidates(seq: String, distance: Int = 0, begin: Int = 0, end: Int = Int.MaxValue): List[(Int, Double)] = {
+    val slide: Seq[(Int, Double)] = slideSequence(seq, begin = begin, end = end)//.filter(_._2 > minimalScore)
     val slides: List[(Int, Double)] = slide.foldLeft(List.empty[(Int, Double)]){
       case (Nil, (i, v)) => (i, v)::Nil
       case ( (i0, v0)::tail, (i, v) ) if i0 + distance + seq.length < i => (i, v)::(i0, v0)::tail

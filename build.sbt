@@ -6,9 +6,9 @@ name := "pwm"
 
 organization := "group.aging-research"
 
-scalaVersion :=  "2.12.7"
+scalaVersion :=  "2.12.8"
 
-version := "0.0.5"
+version := "0.0.6"
 
 coursierMaxIterations := 200
 
@@ -31,14 +31,14 @@ resolvers += Resolver.sonatypeRepo("releases")
 addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.1").cross(CrossVersion.full))
 
 libraryDependencies ++= Seq(
- "org.typelevel" %% "cats-core" % "1.4.0",
+ "org.typelevel" %% "cats-core" % "1.5.0",
  "org.scalanlp" %% "breeze" % "1.0-RC2",
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
- "org.wvlet.airframe" %% "airframe-log" % "0.74",
- "com.github.pathikrit" %% "better-files" % "3.6.0",
+ "org.wvlet.airframe" %% "airframe-log" % "0.77",
+ "com.github.pathikrit" %% "better-files" % "3.7.0",
  "com.monovore" %% "decline" % "0.6.0",
  "com.monovore" %% "decline-refined" % "0.6.0",
- "group.aging-research" %% "assembly" % "0.0.2",
+ "group.aging-research" %% "assembly" % "0.0.4",
  "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
