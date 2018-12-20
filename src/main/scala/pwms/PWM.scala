@@ -118,7 +118,7 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
 
   lazy val relativeFrequenciesPure: DenseMatrix[Double] = if(hasGaps)
-    (matrixNoGaps + gapsMatrixPure ) /:/  tile(sumColsNoGaps, matrixNoGaps.rows, 1)
+    (matrixNoGaps /*+ gapsMatrixPure*/ ) /:/  tile(sumColsNoGaps, matrixNoGaps.rows, 1)
   else
     relativeFrequencies
 

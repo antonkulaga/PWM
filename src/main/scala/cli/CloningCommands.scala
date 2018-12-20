@@ -30,6 +30,8 @@ trait CloningCommands extends MergeCommands {
       case "BbsI" => RestrictionEnzymes.BbsI
       case "BsaI" => RestrictionEnzymes.BsaI
       case "BsmBI" => RestrictionEnzymes.BsmBI
+      case "" =>
+        RestrictionEnzymes.BsmBI
       case other =>
         println(s"$other enzyme is not supported by current GoldenGate implementation, selecting BsmBI instead")
         RestrictionEnzymes.BsmBI
