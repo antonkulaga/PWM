@@ -33,10 +33,13 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   val gc_max = Opts.option[Double](long = "gc_max", short = "", help = "maximum GC content").withDefault(0.7)
   val win_gc_size1 = Opts.option[Int](long = "win_gc_size1", short = "", help = "GC window1 size, if < 1 then window is not used").withDefault(100)
   val win_gc_min1 = Opts.option[Double](long = "win_gc_min1", short = "", help = "window1 minimum GC content").withDefault(0.25)
-  val win_gc_max1 = Opts.option[Double](long = "win_gc_max1", short = "", help = "window 1 maximum GC content").withDefault(0.75)
+  val win_gc_max1 = Opts.option[Double](long = "win_gc_max1", short = "", help = "window1 maximum GC content").withDefault(0.75)
   val win_gc_size2 = Opts.option[Int](long = "win_gc_size2", short = "", help = "GC window2 size, if < 1 then window is not used").withDefault(50)
   val win_gc_min2 = Opts.option[Double](long = "win_gc_min2", short = "", help = "window2 minimum GC content").withDefault(0.15)
   val win_gc_max2 = Opts.option[Double](long = "win_gc_max2", short = "", help = "window2 maximum GC content").withDefault(0.8)
+
+  val sticky_diff = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(2)
+  val sticky_gc = Opts.option[Int](long = "sticky_gc", short = "", help = "minimal numbers of G || C nucleotides in the sticky end").withDefault(1)
 
 
   def synthesize(s: String, rep: Int,  avoid: NonEmptyList[String],
@@ -58,7 +61,10 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   protected lazy val synthesis = Command(
     name = "synthesize", header = "Check synthesize"
   ){
-    (sequence, max_repeat, avoid_enzymes, gc_min, gc_max, win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2).mapN(synthesize)
+    (sequence, max_repeat, avoid_enzymes,
+      gc_min, gc_max,
+      win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2
+    ).mapN(synthesize)
   }
 
   protected val synthesisSubcommand = Opts.subcommand(synthesis)
@@ -82,7 +88,8 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
                         avoid_enzymes: NonEmptyList[String], gc_min: Double, gc_max: Double,
                         number: Int, enzyme: String, stickyLeft: String, stickyRight: String,
                         win_gc_size1: Int, win_gc_min1: Double, win_gc_max1: Double,
-                        win_gc_size2: Int, win_gc_min2: Double, win_gc_max2: Double
+                        win_gc_size2: Int, win_gc_min2: Double, win_gc_max2: Double,
+                        sticky_diff: Int, sticky_gc: Int
                        ) = {
     val avoidList = RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid_enzymes.toList.contains(e)}
     println(s"From avoided enzymes (${avoid_enzymes.toList.mkString(",")}) following enzymes where found: ${avoidList}")
@@ -97,7 +104,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
         println(s"preparing sequences for PWM ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
         val p = params(pwm)
 
-        val gold = SequenceGeneratorGold(GoldenGate(enzymeFromName(enzyme)))
+        val gold = SequenceGeneratorGold(GoldenGate(enzymeFromName(enzyme), "N"), sticky_diff, sticky_gc)
         Try{
           if(stickyLeft =="" || stickyRight =="") gold.randomizeMany(p, number, max_tries) else gold.generateMany(p, number, max_tries, stickyLeft, stickyRight)
         } match {
@@ -129,7 +136,14 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   protected lazy val generate: Command[Unit] = Command(
     name = "generate", header = "Generates from PWM"
   ){
-    (path,  delimiter, outputFile, verbose, max_tries, max_repeat, avoid_enzymes, gc_min, gc_max, instances, cloning, sticky_left, sticky_right, win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2).mapN(generateSequences)
+    (path,  delimiter, outputFile, verbose,
+      max_tries, max_repeat, avoid_enzymes,
+      gc_min, gc_max,
+      instances, cloning,
+      sticky_left, sticky_right,
+      win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2,
+      sticky_diff, sticky_gc
+    ).mapN(generateSequences)
   }
   val generateSubcommand = Opts.subcommand(generate)
 

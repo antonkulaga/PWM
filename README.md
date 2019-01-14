@@ -202,7 +202,7 @@ sbt docker:publishLocal
 ```
 to publish a docker container with the application. Then you can start the container:
 ```bash
-docker run -v /path/to/my/data:/data quay.io/comp-bio-aging/pwm:0.0.4
+docker run -v /path/to/my/data:/data quay.io/comp-bio-aging/pwm:0.0.7
 ```
 
 Adding PWM library to your dependencies

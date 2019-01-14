@@ -1,6 +1,5 @@
 package pwms
 
-
 import scala.util._
 import better.files._
 import File._

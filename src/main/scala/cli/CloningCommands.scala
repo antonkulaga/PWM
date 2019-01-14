@@ -36,6 +36,7 @@ trait CloningCommands extends MergeCommands {
         println(s"$other enzyme is not supported by current GoldenGate implementation, selecting BsmBI instead")
         RestrictionEnzymes.BsmBI
   }
+
   def goldenClone(seq: NonEmptyList[Path], enzyme: String, output: Path, left: String, right: String)= {
     val restriction = enzymeFromName(enzyme)
     val gold = GoldenGate(restriction)
