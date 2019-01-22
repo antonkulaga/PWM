@@ -68,7 +68,7 @@ object PWM {
 
   def matrixToString(indexes: SortedMap[String, Int], mat: DenseMatrix[Double], delimiter: String = "\t"): String ={
     matrixToLines(indexes, mat, delimiter).reduce(_ + "\n" + _)
-      .replace(delimiter+"\n", "\n") //fix extra delimiter bug
+      .replace(delimiter+"\n", "\n").trim //fix extra delimiter bug
   }
 
 }

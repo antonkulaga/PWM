@@ -42,7 +42,7 @@ trait InsertCommands extends MergeCommands{
   def insertStringIntoFile(sequence: String, number: Int, distance: Int, value: Double, verbose: Boolean, output: File, f: String, pwm: PWM, begin: Int, end: Int): File = {
     info(s"PWM found at ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
     info(s"inserting ${sequence} ${number} times with distance ${distance} and value ${value} inside PWM")
-    val sm: DenseMatrix[Double] = pwm.sequenceToMatrix(sequence, 1)
+    val sm: DenseMatrix[Double] = pwm.sequenceToMatrix(sequence, value)
     val cand: Seq[(Int, Double)] = pwm.candidates(sm, distance, begin, end)
     processCandidates(sm, number, value, verbose, output, f, pwm, cand)
   }
