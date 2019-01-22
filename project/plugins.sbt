@@ -7,3 +7,5 @@ addSbtPlugin("io.get-coursier" % "sbt-coursier" % "1.1.0-M9")
 // for autoplugins
 addSbtPlugin("com.typesafe.sbt" % "sbt-native-packager" % "1.3.14")
 
+addSbtPlugin("ch.epfl.scala" % "sbt-scalafix" % "0.9.1")
+

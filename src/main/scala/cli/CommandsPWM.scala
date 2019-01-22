@@ -8,6 +8,7 @@ trait CommandsPWM extends GenerateCommands {
     mergeSubcommand orElse
     manualInsertSubcommand orElse
     insertSubcommand orElse
+    insertPWMSubcommand orElse
     consensusSubcommand orElse
     randomSubcommand orElse synthesisSubcommand orElse generateSubcommand orElse cloningSubcommand
 }

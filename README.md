@@ -93,29 +93,29 @@ insert_at subcommand
 --------------------
 Insertion of the sequence at manually chosen positions inside PWM
 ```bash
- Usage: PWM insert_at --position <integer> [--position <integer>]... [--value <integer>] [--verbose] [--delimiter <string>] <sequence> <file or folder to read from> <output file>
- insert sequence manually into some positions
- Options and flags:
-     --help
-         Display this help text.
-     --position <integer>, -p <integer>
-         positions to which insert the sequence
-     --value <integer>, -v <integer>, -a <integer>, -l <integer>
-         default value for inserted nucleotides in PWM
-     --verbose, -v
-         show values of the found PWMs
-     --delimiter <string>, -d <string>
-         delimiter to be used when parsing PWMs
+Usage: PWM insert_at --position <integer> [--position <integer>]... [--value <floating-point>] [--verbose] [--delimiter <string>] <sequence> <file or folder to read from> <output file>
+insert sequence manually into some positions
+Options and flags:
+    --help
+        Display this help text.
+    --position <integer>, -p <integer>
+        positions to which insert the sequence
+    --value <floating-point>, -v <floating-point>, -a <floating-point>, -l <floating-point>
+        default value for inserted nucleotides in PWM
+    --verbose, -v
+        show values of the found PWMs
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
 ```
 To use this command just select tsv/csv with PWM and provide sequence and position for the insertion.
-Insertion will be done in a format of one-hot vectors multiplied by *value* option. 
+Insertion will be done in a format of one-hot vectors multiplied by *value* option, if bases like N, W, Y and so on will present it will insert corresponding probabilities 
 *value" option is needed to increase importance of the inserted sequence to avoid its potential disruption in any further changes of the PWM.
 
 insert subcommand
 -----------------
 Finding and inserting into best positions in the PWM, trying to minimize PWM disruption.
 ```bash
-Usage: PWM insert [--num <integer>] [--distance <integer>] [--value <integer>] [--miss <floating-point>] [--gapmult <floating-point>] [--verbose] [--delimiter <string>] <sequence> <file or folder to read from> <output folder or file>
+Usage: PWM insert [--num <integer>] [--distance <integer>] [--value <floating-point>] [--miss <floating-point>] [--gapmult <floating-point>] [--verbose] [--delimiter <string>] [--begin <integer>] [--end <integer>] <sequence> <file or folder to read from> <output folder or file>
 inserts sequence into PWM into the best place
 Options and flags:
     --help
@@ -124,7 +124,7 @@ Options and flags:
         number of insertions
     --distance <integer>, -d <integer>, -i <integer>, -s <integer>, -t <integer>
         minimum distance between two insertions if insertion number > 1
-    --value <integer>, -v <integer>, -a <integer>, -l <integer>
+    --value <floating-point>, -v <floating-point>, -a <floating-point>, -l <floating-point>
         default value for inserted nucleotides in PWM
     --miss <floating-point>, -m <floating-point>
         miss score (negative value required)
@@ -134,6 +134,10 @@ Options and flags:
         show values of the found PWMs
     --delimiter <string>, -d <string>
         delimiter to be used when parsing PWMs
+    --begin <integer>, -b <integer>
+        from which nucleotide to start insertions
+    --end <integer>, -e <integer>
+        until which nucleotide to stop insertion
 ```
 This command can be applied either to a file or a folder.
 If it is applied to a file it reads its PWM, makes insertions and saves as an output file.
@@ -149,11 +153,41 @@ Parameter *num* defines the number of insertions into the file, parameter *dista
 Parameters *miss* and *gapmult* are used to tune the algorithm. 
 *miss* is a negative number that means the penalty for the mismatch
 *gapmult* increases the importance of gaps, and thus - ability to insert any base into the position. 
+*begin* and *end* are important if you want to select an insertion place inside some range within PWM
+
+insert_pwm subcommand
+---------------------
+same as insert command but uses PWM instead of the sequence.
+```
+Usage: PWM insert_pwm [--num <integer>] [--distance <integer>] [--value <floating-point>] [--miss <floating-point>] [--gapmult <floating-point>] [--verbose] [--delimiter <string>] [--begin <integer>] [--end <integer>] <PWM file or folder to read from> <file or folder to read from> <output folder or file>
+inserts PWM into larger PWM into the best place
+Options and flags:
+    --help
+        Display this help text.
+    --num <integer>, -n <integer>
+        number of insertions
+    --distance <integer>, -d <integer>, -i <integer>, -s <integer>, -t <integer>
+        minimum distance between two insertions if insertion number > 1
+    --value <floating-point>, -v <floating-point>, -a <floating-point>, -l <floating-point>
+        default value for inserted nucleotides in PWM
+    --miss <floating-point>, -m <floating-point>
+        miss score (negative value required)
+    --gapmult <floating-point>, -g <floating-point>
+        how much we care about gaps when inserting
+    --verbose, -v
+        show values of the found PWMs
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
+    --begin <integer>, -b <integer>
+        from which nucleotide to start insertions
+    --end <integer>, -e <integer>
+        until which nucleotide to stop insertion
+```
 
 generate subcommand
 -------------------
 ```
-Usage: PWM generate [--delimiter <string>] [--verbose] [--tries <integer>] [--max_repeats <integer>] --avoid <string> [--avoid <string>]... [--gc_min <floating-point>] [--gc_max <floating-point>] <file or folder to read from> <output file>
+Usage: PWM generate [--delimiter <string>] [--verbose] [--tries <integer>] [--max_repeats <integer>] [--avoid <string>]... [--gc_min <floating-point>] [--gc_max <floating-point>] [--instances <integer>] [--enzyme <string>] [--sticky_left <string>] [--sticky_right <string>] [--win_gc_size1 <integer>] [--win_gc_min1 <floating-point>] [--win_gc_max1 <floating-point>] [--win_gc_size2 <integer>] [--win_gc_min2 <floating-point>] [--win_gc_max2 <floating-point>] [--sticky_diff <integer>] [--sticky_gc <integer>] <file or folder to read from> <output file>
 Generates from PWM
 Options and flags:
     --help
@@ -164,16 +198,40 @@ Options and flags:
         show values of the found PWMs
     --tries <integer>, -t <integer>
         Maximum number of attempts to generate a good sequence
-    --max_repeats <integer>, -r <integer>, -e <integer>, -p <integer>
+    --max_repeats <integer>, -r <integer>
         Maximum repeat length
     --avoid <string>, -a <string>
         Avoid enzymes
-    --gc_min <floating-point>, -g <floating-point>, -m <floating-point>, -i <floating-point>, -n <floating-point>
+    --gc_min <floating-point>
         minimum GC content
-    --gc_max <floating-point>, -g <floating-point>, -m <floating-point>, -a <floating-point>, -x <floating-point>
+    --gc_max <floating-point>
         maximum GC content
+    --instances <integer>, -i <integer>
+        Maximum number of instances per template
+    --enzyme <string>, -e <string>
+        Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added
+    --sticky_left <string>
+        Flank assembled sequence from the left with sticky side
+    --sticky_right <string>
+        Flank assembled sequence from the right with sticky side
+    --win_gc_size1 <integer>
+        GC window1 size, if < 1 then window is not used
+    --win_gc_min1 <floating-point>
+        window1 minimum GC content
+    --win_gc_max1 <floating-point>
+        window1 maximum GC content
+    --win_gc_size2 <integer>
+        GC window2 size, if < 1 then window is not used
+    --win_gc_min2 <floating-point>
+        window2 minimum GC content
+    --win_gc_max2 <floating-point>
+        window2 maximum GC content
+    --sticky_diff <integer>
+        minimal difference between sticky sides
+    --sticky_gc <integer>
+        minimal numbers of G || C nucleotides in the sticky end
 ```
-Generates sequences PWMs based on synthesis parameters and restriction sides to avoid.
+Generates sequences PWMs based on synthesis parameters and restriction sides to avoid, also allows to add GoldenGate sites to ease cloning.
 
 Building from source
 ====================

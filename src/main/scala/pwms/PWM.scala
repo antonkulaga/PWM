@@ -6,6 +6,7 @@ import breeze.stats._
 import cats._
 import cats.implicits._
 import pwms.functions._
+import scala.compat._
 
 import scala.collection.{SortedMap, immutable}
 
@@ -131,13 +132,34 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   lazy val weightedLogOddsTable: DenseMatrix[Double] =  positiveLogOdds + (negativeLogOdds  *:*  colWeights) //just a hack to increase importance of high values
 
+  /**
+    * 'W' -> Array('A', 'T'), //weak
+    * 'S' -> Array('C', 'G'), //strong
+    * 'M' -> Array('A', 'C'), //amino
+    * 'K' -> Array('G', 'T'), //keto
+    * 'R' -> Array('A', 'G'), //purine
+    * 'Y' -> Array('C', 'T'), //pyramidine
+    * 'B' -> Array('C', 'G', 'T'), //not A
+    * 'D' -> Array('A', 'G', 'T'), //not C
+    * 'H' -> Array('A', 'C', 'T'), //not G
+    * 'V' -> Array('A', 'C', 'G'), //not T
+    * 'N' -> Array('A', 'C', 'G', 'T') //any
+    *
+    * @param seq
+    * @param value
+    * @return
+    */
+  lazy val nucMap: Map[Char, Array[Char]] = assembly.extensions.nucs ++ Map('A' -> Array('A'),'T' -> Array('T'),'G' -> Array('G'),'C' -> Array('C') )
+
   def sequenceToMatrix(seq: String, value: Double): DenseMatrix[Double] = {
     val m = DenseMatrix.zeros[Double](matrix.rows, seq.length)
-    val ind: Seq[(Char, Int)] = seq.zipWithIndex
+    val ind: Seq[(Char, Int)] = seq.toUpperCase.zipWithIndex
     for{
       (s, c) <- ind
-      r = indexes(s.toString)
-    } m.update(r, c, value)
+      arr = nucMap(s)
+      n <- arr
+      r = indexes(n.toString)
+    } m.update(r, c, value / arr.length)
     m
   }
 
@@ -153,7 +175,11 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   }
 
   protected def slideSequence(sequence: String, mult: Double = 1.0, begin: Int = 0, end: Int = Int.MaxValue): Seq[(Int, Double)] = {
-    val sm = sequenceToMatrix(sequence, mult)
+    val sm: DenseMatrix[Double] = sequenceToMatrix(sequence, mult)
+    slideMatrix(sm, mult, begin, end)
+  }
+
+  protected def slideMatrix(sm: DenseMatrix[Double], mult: Double = 1.0, begin: Int = 0, end: Int = Int.MaxValue): Seq[(Int, Double)] = {
     val finish = Math.min(matrix.cols - sm.cols, end)
     for { i <- begin until finish } yield i -> scoreAt(sm, i)
   }
@@ -184,16 +210,22 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @param distance minimal distance between insertions
     * @return
     */
-  def candidates(seq: String, distance: Int = 0, begin: Int = 0, end: Int = Int.MaxValue): List[(Int, Double)] = {
-    val slide: Seq[(Int, Double)] = slideSequence(seq, begin = begin, end = end)//.filter(_._2 > minimalScore)
+  def candidates(seq: String, distance: Int = 0, begin: Int = 0, end: Int = Int.MaxValue, mult: Int = 1): List[(Int, Double)] = {
+    val sm: DenseMatrix[Double] = sequenceToMatrix(seq, mult)
+    candidates(sm, distance, begin, end)
+  }
+
+  def candidates(sm: DenseMatrix[Double], distance: Int, begin: Int, end: Int): List[(Int, Double)] = {
+    val slide: Seq[(Int, Double)] = slideMatrix(sm, begin = begin, end = end)//.filter(_._2 > minimalScore)
     val slides: List[(Int, Double)] = slide.foldLeft(List.empty[(Int, Double)]){
       case (Nil, (i, v)) => (i, v)::Nil
-      case ( (i0, v0)::tail, (i, v) ) if i0 + distance + seq.length < i => (i, v)::(i0, v0)::tail
+      case ( (i0, v0)::tail, (i, v) ) if i0 + distance + sm.cols < i => (i, v)::(i0, v0)::tail
       case ( (i0, v0)::tail, (_, v) ) if v0 >= v => (i0, v0)::tail
       case ((_, v0)::tail, (i, v)) if v0 < v => (i, v)::tail
     }
     slides.sortWith{ case ((i0, v0), (i, v)) => (v0 == v && i0 <= i) || v0 > v}
   }
+
 
   /**
     * new PWM with insertions of the sequence into one or more positions
@@ -203,7 +235,11 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @return
     */
   def withReplacement(sequence: String, value: Double, positions: Int*): PWM = {
-    val sm = sequenceToMatrix(sequence, value)
+    val sm: DenseMatrix[Double] = sequenceToMatrix(sequence, value)
+    withReplacement(sm, value, positions:_*)
+  }
+
+  def withReplacement(sm: DenseMatrix[Double], value: Double, positions: Int*): PWM = {
     val newMat = positions.foldLeft(this.matrix){ case (acc, pos) => acc.replaceColumns(sm, pos) }
     copy(matrix = newMat)
   }

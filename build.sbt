@@ -8,17 +8,15 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.8"
 
-version := "0.0.7"
+version := "0.0.8"
 
 coursierMaxIterations := 200
 
 isSnapshot := false
 
-scalacOptions ++= Seq( "-target:jvm-1.8", "-feature", "-language:_" )
+javacOptions ++= Seq("-Xlint", "-J-Xss5M", "-encoding", "UTF-8")
 
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint", "-J-Xss5M", "-encoding", "UTF-8")
-
-javaOptions ++= Seq("-Xms512M", "-Xmx2048M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled")
+javaOptions ++= Seq("-Xms512M", "-Xmx4096M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled")
 
 resourceDirectory in Test := baseDirectory { _ / "files" }.value
 
@@ -32,6 +30,8 @@ resolvers += Resolver.bintrayRepo("comp-bio-aging", "main")
 
 addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.1").cross(CrossVersion.full))
 
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0-M4")
+
 libraryDependencies ++= Seq(
  "org.typelevel" %% "cats-core" % "1.5.0",
  "org.scalanlp" %% "breeze" % "1.0-RC2",
@@ -40,7 +40,7 @@ libraryDependencies ++= Seq(
  "com.github.pathikrit" %% "better-files" % "3.7.0",
  "com.monovore" %% "decline" % "0.6.0",
  "com.monovore" %% "decline-refined" % "0.6.0",
- "group.aging-research" %% "assembly" % "0.0.7",
+ "group.aging-research" %% "assembly" % "0.0.8",
  "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
@@ -57,6 +57,8 @@ bintrayRepository := "main"
 bintrayOrganization := Some("comp-bio-aging")
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
+
+dockerBaseImage := "openjdk:11-oracle"
 
 maintainer in Docker := "Anton Kulaga <antonkulaga@gmail.com>"
 

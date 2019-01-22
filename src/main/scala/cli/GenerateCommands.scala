@@ -38,7 +38,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   val win_gc_min2 = Opts.option[Double](long = "win_gc_min2", short = "", help = "window2 minimum GC content").withDefault(0.15)
   val win_gc_max2 = Opts.option[Double](long = "win_gc_max2", short = "", help = "window2 maximum GC content").withDefault(0.8)
 
-  val sticky_diff = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(2)
+  val sticky_diff = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(1)
   val sticky_gc = Opts.option[Int](long = "sticky_gc", short = "", help = "minimal numbers of G || C nucleotides in the sticky end").withDefault(1)
 
 
