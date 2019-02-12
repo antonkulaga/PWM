@@ -1,5 +1,5 @@
+import com.typesafe.sbt.packager.docker.{Cmd, DockerChmodType}
 import sbt.Keys._
-
 import sbt._
 
 name := "pwm"
@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.8"
 
-version := "0.0.8"
+version := "0.0.11"
 
 coursierMaxIterations := 200
 
@@ -33,14 +33,13 @@ addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.1").cross(CrossVersion
 addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0-M4")
 
 libraryDependencies ++= Seq(
- "org.typelevel" %% "cats-core" % "1.5.0",
  "org.scalanlp" %% "breeze" % "1.0-RC2",
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
- "org.wvlet.airframe" %% "airframe-log" % "0.78",
+ "org.wvlet.airframe" %% "airframe-log" % "0.80",
  "com.github.pathikrit" %% "better-files" % "3.7.0",
  "com.monovore" %% "decline" % "0.6.0",
  "com.monovore" %% "decline-refined" % "0.6.0",
- "group.aging-research" %% "assembly" % "0.0.8",
+ "group.aging-research" %% "assembly" % "0.0.10",
  "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
@@ -60,11 +59,25 @@ licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
 dockerBaseImage := "openjdk:11-oracle"
 
+daemonUserUid in Docker := None
+
+daemonUser in Docker := "root"
+
+dockerExposedVolumes := Seq("/data")
+
+dockerUpdateLatest := true
+
+dockerChmodType := DockerChmodType.UserGroupWriteExecute
+
 maintainer in Docker := "Anton Kulaga <antonkulaga@gmail.com>"
 
 maintainer := "Anton Kulaga <antonkulaga@gmail.com>"
 
 dockerRepository := Some("quay.io/comp-bio-aging")
+
+dockerCommands ++= Seq(
+ Cmd("WORKDIR", "/data")
+)
 
 enablePlugins(JavaAppPackaging, DockerPlugin)
 

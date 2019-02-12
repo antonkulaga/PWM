@@ -1,4 +1,5 @@
 package pwms
+import assembly.synthesis.SequenceTemplate
 import better.files.File
 import breeze.linalg._
 import breeze.numerics._
@@ -6,8 +7,8 @@ import breeze.stats._
 import cats._
 import cats.implicits._
 import pwms.functions._
-import scala.compat._
 
+import scala.compat._
 import scala.collection.{SortedMap, immutable}
 
 /**
@@ -242,6 +243,10 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   def withReplacement(sm: DenseMatrix[Double], value: Double, positions: Int*): PWM = {
     val newMat = positions.foldLeft(this.matrix){ case (acc, pos) => acc.replaceColumns(sm, pos) }
     copy(matrix = newMat)
+  }
+
+  override def withSequenceReplacement(sequence: String, position: Int): PWM = {
+    withReplacement(sequence, 100000, position)
   }
 
   override def toString: String = toString("\t")

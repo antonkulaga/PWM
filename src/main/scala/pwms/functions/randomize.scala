@@ -9,7 +9,7 @@ import breeze.linalg.support.CanTraverseValues.ValuesVisitor
 import scala.util.Random
 
 object randomize extends UFunc {
-  val random = SecureRandom.getInstance("NativePRNGNonBlocking", "SUN")
+  val random: SecureRandom = SecureRandom.getInstance("NativePRNGNonBlocking", "SUN")
   //random.reseed()
 
   implicit def sumFromTraverseDoubles[T](implicit traverse: CanTraverseValues[T, Double]): Impl[T, Double] = {

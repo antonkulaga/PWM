@@ -27,16 +27,16 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
 
   val max_repeat: Opts[Int] = Opts.option[Int](long = "max_repeats", short = "r", help = "Maximum repeat length").withDefault(19)
 
-  val instances = Opts.option[Int](long = "instances", short = "i", help = "Maximum number of instances per template").withDefault(1)
+  val instances: Opts[Int] = Opts.option[Int](long = "instances", short = "i", help = "Maximum number of instances per template").withDefault(1)
 
-  val gc_min = Opts.option[Double](long = "gc_min", short = "", help = "minimum GC content").withDefault(0.25)
-  val gc_max = Opts.option[Double](long = "gc_max", short = "", help = "maximum GC content").withDefault(0.7)
-  val win_gc_size1 = Opts.option[Int](long = "win_gc_size1", short = "", help = "GC window1 size, if < 1 then window is not used").withDefault(100)
-  val win_gc_min1 = Opts.option[Double](long = "win_gc_min1", short = "", help = "window1 minimum GC content").withDefault(0.25)
-  val win_gc_max1 = Opts.option[Double](long = "win_gc_max1", short = "", help = "window1 maximum GC content").withDefault(0.75)
-  val win_gc_size2 = Opts.option[Int](long = "win_gc_size2", short = "", help = "GC window2 size, if < 1 then window is not used").withDefault(50)
-  val win_gc_min2 = Opts.option[Double](long = "win_gc_min2", short = "", help = "window2 minimum GC content").withDefault(0.15)
-  val win_gc_max2 = Opts.option[Double](long = "win_gc_max2", short = "", help = "window2 maximum GC content").withDefault(0.8)
+  val gc_min: Opts[Double] = Opts.option[Double](long = "gc_min", short = "", help = "minimum GC content").withDefault(0.25)
+  val gc_max: Opts[Double] = Opts.option[Double](long = "gc_max", short = "", help = "maximum GC content").withDefault(0.7)
+  val win_gc_size1: Opts[Int] = Opts.option[Int](long = "win_gc_size1", short = "", help = "GC window1 size, if < 1 then window is not used").withDefault(100)
+  val win_gc_min1: Opts[Double] = Opts.option[Double](long = "win_gc_min1", short = "", help = "window1 minimum GC content").withDefault(0.25)
+  val win_gc_max1: Opts[Double] = Opts.option[Double](long = "win_gc_max1", short = "", help = "window1 maximum GC content").withDefault(0.75)
+  val win_gc_size2: Opts[Int] = Opts.option[Int](long = "win_gc_size2", short = "", help = "GC window2 size, if < 1 then window is not used").withDefault(50)
+  val win_gc_min2: Opts[Double] = Opts.option[Double](long = "win_gc_min2", short = "", help = "window2 minimum GC content").withDefault(0.15)
+  val win_gc_max2: Opts[Double] = Opts.option[Double](long = "win_gc_max2", short = "", help = "window2 maximum GC content").withDefault(0.8)
 
   val sticky_diff = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(1)
   val sticky_gc = Opts.option[Int](long = "sticky_gc", short = "", help = "minimal numbers of G || C nucleotides in the sticky end").withDefault(1)
@@ -70,8 +70,10 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   protected val synthesisSubcommand = Opts.subcommand(synthesis)
 
   val max_tries = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
+  val sticky_tries = Opts.option[Int](long = "tries", short = "", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
 
-  val template_repeats = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
+
+  //val template_repeats = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
 
   case class GenerationParametersPWM(template: PWM,
                        maxRepeatSize: Int,
@@ -81,6 +83,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
 
     override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-")
 
+    override def withReplacement(sequence: String, position: Int): GenerationParameters = copy(template = template.withSequenceReplacement(sequence, position))
   }
 
   def generateSequences(path: Path, delimiter: String, outputFile: Path,
@@ -127,9 +130,9 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     fl.overwrite(fasta)
   }
 
-  protected lazy val cloning = Opts.option[String](long = "enzyme", short = "e", help = "Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added").withDefault("")
-  protected lazy val sticky_left = Opts.option[String](long = "sticky_left", short = "", help = "Flank assembled sequence from the left with sticky side").withDefault("")
-  protected lazy val sticky_right = Opts.option[String](long = "sticky_right", short = "", help = "Flank assembled sequence from the right with sticky side").withDefault("")
+  protected lazy val cloning: Opts[String] = Opts.option[String](long = "enzyme", short = "e", help = "Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added").withDefault("")
+  protected lazy val sticky_left: Opts[String] = Opts.option[String](long = "sticky_left", short = "", help = "Flank assembled sequence from the left with sticky side").withDefault("")
+  protected lazy val sticky_right: Opts[String] = Opts.option[String](long = "sticky_right", short = "", help = "Flank assembled sequence from the right with sticky side").withDefault("")
 
 
   //filePWM
@@ -145,7 +148,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
       sticky_diff, sticky_gc
     ).mapN(generateSequences)
   }
-  val generateSubcommand = Opts.subcommand(generate)
+  val generateSubcommand: Opts[Unit] = Opts.subcommand(generate)
 
 
 }
