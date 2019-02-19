@@ -10,6 +10,9 @@ import pwms.{LoaderPWM, PWM, SequenceLoader}
 
 import scala.collection.immutable.ListMap
 
+/**
+  * Comments to ease some of the cloning/assembly tasks
+  */
 object CloningCommands extends CloningCommands
 trait CloningCommands extends MergeCommands {
 
@@ -53,7 +56,7 @@ trait CloningCommands extends MergeCommands {
 
   protected lazy val golden_gate: Command[Unit] = Command(
     name = "golden_gate",
-    header = "Golden gate cloning between sequences"
+    header = "adds golden-gate sites, overhangs and sticky edges to clone sequences together without assembly scars"
   ) {
     (sequences, enzyme, outputFile, left, right).mapN{goldenClone}
   }

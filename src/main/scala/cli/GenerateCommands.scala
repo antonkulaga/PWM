@@ -38,14 +38,14 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   val win_gc_min2: Opts[Double] = Opts.option[Double](long = "win_gc_min2", short = "", help = "window2 minimum GC content").withDefault(0.15)
   val win_gc_max2: Opts[Double] = Opts.option[Double](long = "win_gc_max2", short = "", help = "window2 maximum GC content").withDefault(0.8)
 
-  val sticky_diff = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(1)
-  val sticky_gc = Opts.option[Int](long = "sticky_gc", short = "", help = "minimal numbers of G || C nucleotides in the sticky end").withDefault(1)
+  val sticky_diff: Opts[Int] = Opts.option[Int](long = "sticky_diff", short = "", help = "minimal difference between sticky sides").withDefault(1)
+  val sticky_gc: Opts[Int] = Opts.option[Int](long = "sticky_gc", short = "", help = "minimal numbers of G || C nucleotides in the sticky end").withDefault(1)
 
 
   def synthesize(s: String, rep: Int,  avoid: NonEmptyList[String],
                  g_min: Double, g_max: Double,
                  win_gc_size1: Int, win_gc_min1: Double, win_gc_max1: Double,
-                 win_gc_size2: Int, win_gc_min2: Double, win_gc_max2: Double) ={
+                 win_gc_size2: Int, win_gc_min2: Double, win_gc_max2: Double): Unit ={
     val template = new StringTemplate(s)
     val restrictions =  RestrictionEnzymes(RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid.toList.contains(e)})
     val contentGC = ContentGC(g_min, g_max, List(WindowGC(win_gc_size1, win_gc_min1, win_gc_max1),WindowGC(win_gc_size2, win_gc_min2, win_gc_max2)).filter(_.size > 0))
@@ -69,8 +69,8 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
 
   protected val synthesisSubcommand = Opts.subcommand(synthesis)
 
-  val max_tries = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
-  val sticky_tries = Opts.option[Int](long = "tries", short = "", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
+  val max_tries: Opts[Int] = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
+  val sticky_tries: Opts[Int] = Opts.option[Int](long = "sticky_tries", short = "", help = "Maximum number of attempts to select golden-gate edges if all other parameters match").withDefault(256)
 
 
   //val template_repeats = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
@@ -86,14 +86,15 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     override def withReplacement(sequence: String, position: Int): GenerationParameters = copy(template = template.withSequenceReplacement(sequence, position))
   }
 
+
   def generateSequences(path: Path, delimiter: String, outputFile: Path,
                         verbose: Boolean, max_tries: Int, max_repeat: Int,
                         avoid_enzymes: NonEmptyList[String], gc_min: Double, gc_max: Double,
                         number: Int, enzyme: String, stickyLeft: String, stickyRight: String,
                         win_gc_size1: Int, win_gc_min1: Double, win_gc_max1: Double,
                         win_gc_size2: Int, win_gc_min2: Double, win_gc_max2: Double,
-                        sticky_diff: Int, sticky_gc: Int
-                       ) = {
+                        sticky_diff: Int, sticky_gc: Int, maxStickyTries: Int
+                       ): Unit = {
     val avoidList = RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid_enzymes.toList.contains(e)}
     println(s"From avoided enzymes (${avoid_enzymes.toList.mkString(",")}) following enzymes where found: ${avoidList}")
     val restrictions =  RestrictionEnzymes(RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid_enzymes.toList.contains(e)})
@@ -102,32 +103,29 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     val contentGC = ContentGC(gc_min, gc_max, List(WindowGC(win_gc_size1, win_gc_min1, win_gc_max1),WindowGC(win_gc_size2, win_gc_min2, win_gc_max2)).filter(_.size > 0))
     def params(pwm: PWM)  =  GenerationParametersPWM(pwm, max_repeat, contentGC, restrictions)
     println(s"${fileMap.size} PWMs processed for path ${path.toFile.toScala.path}!")
-    val fasta = fileMap.foldLeft(""){
-      case (acc, (f, pwm)) =>
-        println(s"preparing sequences for PWM ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
-        val p = params(pwm)
+    fl.clear()
+    for{
+      (f, pwm) <- fileMap
+    } {
+      println(s"preparing sequences for PWM ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
+      val p = params(pwm)
 
-        val gold = SequenceGeneratorGold(GoldenGate(enzymeFromName(enzyme), "N"), sticky_diff, sticky_gc)
-        Try{
-          if(stickyLeft =="" || stickyRight =="") gold.randomizeMany(p, number, max_tries) else gold.generateMany(p, number, max_tries, stickyLeft, stickyRight)
-        } match {
-          case Success(results) =>
-            val elements: Seq[String] = results.map {
-              str =>
-                val stat = s""">${f} GC = ${p.contentGC.ratioGC(str)}, longest repeat = ${p.findLongestRepeats(str).head._1.size}"""
-                println(s"successfully generated good to synthesize sequence for ${stat}")
-                val name = if (verbose) stat else ">" + File(f).nameWithoutExtension.take(29)
-                name + "\n" + str + "\n"
-            }
-            acc ++ elements.mkString("")
-
-          case scala.util.Failure(exception) =>
-            println(s"could not generate good to synthesize sequence for ${f} with ${max_tries} attempts")
-            acc
-        }
+      val gold = SequenceGeneratorGold(GoldenGate(enzymeFromName(enzyme), "N"), sticky_diff, sticky_gc, maxStickyTries)
+      Try {
+        if (stickyLeft == "" || stickyRight == "") gold.randomizeMany(p, number, max_tries) else gold.generateMany(p, number, max_tries, stickyLeft, stickyRight)
+      } match {
+        case Success(results) =>
+          for(str <- results) {
+              val stat = s""">${f} GC = ${p.contentGC.ratioGC(str)}, longest repeat = ${p.findLongestRepeats(str).head._1.size}"""
+              println(s"successfully generated good to synthesize sequence for ${stat}")
+              val name = if (verbose) stat else ">" + File(f).nameWithoutExtension.take(29)
+              fl.append(name + "\n" + str + "\n")
+          }
+        case scala.util.Failure(exception) =>
+          println(s"could not generate good to synthesize sequence for ${f} with ${max_tries} attempts")
+      }
     }
-    println(s"writing results as FASTA to ${fl.path}")
-    fl.overwrite(fasta)
+    println(s"finished writing FASTA to ${fl.path}")
   }
 
   protected lazy val cloning: Opts[String] = Opts.option[String](long = "enzyme", short = "e", help = "Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added").withDefault("")
@@ -145,7 +143,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
       instances, cloning,
       sticky_left, sticky_right,
       win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2,
-      sticky_diff, sticky_gc
+      sticky_diff, sticky_gc, sticky_tries
     ).mapN(generateSequences)
   }
   val generateSubcommand: Opts[Unit] = Opts.subcommand(generate)

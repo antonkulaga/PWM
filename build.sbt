@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.8"
 
-version := "0.0.11"
+version := "0.0.12"
 
 coursierMaxIterations := 200
 
@@ -39,7 +39,7 @@ libraryDependencies ++= Seq(
  "com.github.pathikrit" %% "better-files" % "3.7.0",
  "com.monovore" %% "decline" % "0.6.0",
  "com.monovore" %% "decline-refined" % "0.6.0",
- "group.aging-research" %% "assembly" % "0.0.10",
+ "group.aging-research" %% "assembly" % "0.0.10.1",
  "org.scalatest" %% "scalatest" % "3.0.5" % Test
 )
 
