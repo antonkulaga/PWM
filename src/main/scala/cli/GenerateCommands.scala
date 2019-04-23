@@ -12,8 +12,12 @@ import assembly.extensions._
 
 import scala.util.{Success, Try}
 
-trait GenerateCommands extends ConsensusCommands with InsertCommands with CloningCommands {
+import cats.data.Validated
+// import cats.data.Validated
 
+
+
+trait GenerateCommands extends ConsensusCommands with InsertCommands with CloningCommands {
 
   def makeParameters(sequence: String, maximumRepeatSize: Int = 20, enzymes: List[String]): GenerationParameters = {
 
@@ -88,7 +92,8 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
 
 
   def generateSequences(path: Path, delimiter: String, outputFile: Path,
-                        verbose: Boolean, max_tries: Int, max_repeat: Int,
+                        verbose: Boolean,
+                        max_tries: Int, max_repeat: Int,
                         avoid_enzymes: NonEmptyList[String], gc_min: Double, gc_max: Double,
                         number: Int, enzyme: String, stickyLeft: String, stickyRight: String,
                         win_gc_size1: Int, win_gc_min1: Double, win_gc_max1: Double,
@@ -131,7 +136,6 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   protected lazy val cloning: Opts[String] = Opts.option[String](long = "enzyme", short = "e", help = "Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added").withDefault("")
   protected lazy val sticky_left: Opts[String] = Opts.option[String](long = "sticky_left", short = "", help = "Flank assembled sequence from the left with sticky side").withDefault("")
   protected lazy val sticky_right: Opts[String] = Opts.option[String](long = "sticky_right", short = "", help = "Flank assembled sequence from the right with sticky side").withDefault("")
-
 
   //filePWM
   protected lazy val generate: Command[Unit] = Command(

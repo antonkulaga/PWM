@@ -4,9 +4,12 @@ import java.nio.file.Path
 
 import better.files._
 import breeze.linalg.DenseMatrix
+import cats.data.Validated
 import cats.implicits._
 import com.monovore.decline._
 import pwms.{LoaderPWM, PWM}
+
+import scala.util.Try
 
 
 trait InsertCommands extends MergeCommands{
@@ -16,6 +19,23 @@ trait InsertCommands extends MergeCommands{
 
   protected val positions = Opts.options[Int](long = "position", "positions to which insert the sequence", "p")
   protected val value = Opts.option[Double](long = "value", help = "default value for inserted nucleotides in PWM", short = "val").withDefault(100000.0)
+
+  protected lazy val fix: Opts[List[(Int, Int)]] =
+    Opts.option[String](long = "fix", short = "", help="Avoids insertions into positions specified as from-to;from-to;from-to")
+      .mapValidated { string =>
+        val strs: Array[String] = string.split(";")
+        val list: List[Array[String]] = strs.map(v => v.split("-", 2)).toList
+        if(list.forall{
+          case Array(one, two) =>
+            Try( (one.toInt , two.toInt)).isSuccess
+          case _ => false
+        })
+          Validated.valid(list.map{ case Array(one, two) => (one.toInt, two.toInt)})
+        else
+          Validated.invalidNel(s"Cannot parse fixed spans $string")
+      }
+      .withDefault(List.empty[(Int, Int)])
+
 
   protected lazy val manualInsertCommand = Command(
     name = "insert_at",
@@ -39,11 +59,11 @@ trait InsertCommands extends MergeCommands{
   protected lazy val outputFolder = Opts.argument[Path]("output folder or file")
 
 
-  def insertStringIntoFile(sequence: String, number: Int, distance: Int, value: Double, verbose: Boolean, output: File, f: String, pwm: PWM, begin: Int, end: Int): File = {
+  def insertStringIntoFile(sequence: String, number: Int, distance: Int, value: Double, verbose: Boolean, output: File, f: String, pwm: PWM, begin: Int, end: Int, fix: List[(Int, Int)] = Nil): File = {
     info(s"PWM found at ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
     info(s"inserting ${sequence} ${number} times with distance ${distance} and value ${value} inside PWM")
     val sm: DenseMatrix[Double] = pwm.sequenceToMatrix(sequence, value)
-    val cand: Seq[(Int, Double)] = pwm.candidates(sm, distance, begin, end)
+    val cand: Seq[(Int, Double)] = pwm.candidates(sm, distance, begin, end, fix)
     processCandidates(sm, number, value, verbose, output, f, pwm, cand)
   }
 
@@ -67,7 +87,7 @@ trait InsertCommands extends MergeCommands{
   }
 
   def insertFromFolder(sequence: String, path: Path, outputFolder: Path, number: Int, distance: Int, value: Double,
-                       miss_score: Double, gapMultiplier: Double, verbose: Boolean, delimiter: String, begin: Int = 0, end: Int = Int.MaxValue): Unit = {
+                       miss_score: Double, gapMultiplier: Double, verbose: Boolean, delimiter: String, begin: Int = 0, end: Int = Int.MaxValue, fix: List[(Int, Int)] = Nil): Unit = {
     val fileMap: Map[String, PWM] = LoaderPWM.load(path.toFile.toScala, miss_score, gapMultiplier, delimiter)
     fileMap.size match {
       case 0 => error("could not find any PWM files!")
@@ -75,11 +95,11 @@ trait InsertCommands extends MergeCommands{
         val (f, pwm) = fileMap.head
         info(s"only ${f} file is given as input")
         val output: File = outputFolder.toFile.toScala.createIfNotExists(false)
-        insertStringIntoFile(sequence, number, distance, value, verbose, output, f, pwm, begin, end)
+        insertStringIntoFile(sequence, number, distance, value, verbose, output, f, pwm, begin, end, fix)
       case _ =>
         val output: File = outputFolder.toFile.toScala.createIfNotExists(true)
         for((f, pwm) <-fileMap){
-          insertStringIntoFile(sequence, number, distance, value, verbose, output, f, pwm, begin, end)
+          insertStringIntoFile(sequence, number, distance, value, verbose, output, f, pwm, begin, end, fix)
         }
     }
   }
@@ -94,22 +114,22 @@ trait InsertCommands extends MergeCommands{
     header = "inserts sequence into PWM into the best place"
   ) {
 
-    (sequence, path, outputFolder, number, distance, value,  miss_score, gapMultiplier, verbose, delimiter, begin, end).mapN(insertFromFolder)
+    (sequence, path, outputFolder, number, distance, value,  miss_score, gapMultiplier, verbose, delimiter, begin, end, fix).mapN(insertFromFolder)
   }
 
   protected val insertSubcommand: Opts[Unit] = Opts.subcommand(insertCommand)
 
 
-  def insertPWMIntoFile(insert: PWM, number: Int, distance: Int, value: Double, verbose: Boolean, output: File, f: String, pwm: PWM, begin: Int, end: Int): File = {
+  def insertPWMIntoFile(insert: PWM, number: Int, distance: Int, value: Double, verbose: Boolean, output: File, f: String, pwm: PWM, begin: Int, end: Int, fix: List[(Int, Int)]): File = {
     info(s"PWM found at ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
     info(s"inserting ${sequence} ${number} times with distance ${distance} and value ${value} inside PWM")
     assert(insert.indexes == pwm.indexes, "indexes of inserted PWM should be same as indexes of the target!")
-    val cand: Seq[(Int, Double)] = pwm.candidates(insert.matrix, distance, begin, end)
+    val cand: Seq[(Int, Double)] = pwm.candidates(insert.matrix, distance, begin, end, fix)
     processCandidates(insert.matrix, number, value, verbose, output, f, pwm, cand)
   }
 
   def insertPWMFromFolder(path_pwm: Path, path: Path, outputFolder: Path, number: Int, distance: Int, value: Double,
-                       miss_score: Double, gapMultiplier: Double, verbose: Boolean, delimiter: String, begin: Int = 0, end: Int = Int.MaxValue): Unit = {
+                       miss_score: Double, gapMultiplier: Double, verbose: Boolean, delimiter: String, begin: Int = 0, end: Int = Int.MaxValue, fix: List[(Int, Int)] = Nil): Unit = {
     val pwm: PWM = LoaderPWM.loadFile(path_pwm.toFile.toScala, miss_score, gapMultiplier, delimiter)
     val fileMap: Map[String, PWM] = LoaderPWM.load(path.toFile.toScala, miss_score, gapMultiplier, delimiter)
     fileMap.size match {
@@ -118,11 +138,11 @@ trait InsertCommands extends MergeCommands{
         val (f, pwm) = fileMap.head
         info(s"only ${f} file is given as input")
         val output: File = outputFolder.toFile.toScala.createIfNotExists(false)
-        insertPWMIntoFile(pwm, number, distance, value, verbose, output, f, pwm, begin, end)
+        insertPWMIntoFile(pwm, number, distance, value, verbose, output, f, pwm, begin, end, fix)
       case _ =>
         val output: File = outputFolder.toFile.toScala.createIfNotExists(true)
         for((f, pwm) <-fileMap){
-          insertPWMIntoFile(pwm, number, distance, value, verbose, output, f, pwm, begin, end)
+          insertPWMIntoFile(pwm, number, distance, value, verbose, output, f, pwm, begin, end, fix)
         }
     }
   }
@@ -134,7 +154,7 @@ trait InsertCommands extends MergeCommands{
     name = "insert_pwm",
     header = "inserts PWM into larger PWM into the best place"
   ) {
-     (path_pwm, path, outputFolder, number, distance, value,  miss_score, gapMultiplier, verbose, delimiter, begin, end).mapN(insertPWMFromFolder)
+     (path_pwm, path, outputFolder, number, distance, value,  miss_score, gapMultiplier, verbose, delimiter, begin, end, fix).mapN(insertPWMFromFolder)
   }
 
   protected val insertPWMSubcommand: Opts[Unit] = Opts.subcommand(insertPWMCommand)

@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.8"
 
-version := "0.0.12"
+version := "0.0.13"
 
 coursierMaxIterations := 200
 
@@ -30,17 +30,17 @@ resolvers += Resolver.bintrayRepo("comp-bio-aging", "main")
 
 addCompilerPlugin(("org.scalamacros" %% "paradise" % "2.1.1").cross(CrossVersion.full))
 
-addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0-M4")
+addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.0")
 
 libraryDependencies ++= Seq(
  "org.scalanlp" %% "breeze" % "1.0-RC2",
  "org.scalanlp" %% "breeze-natives" % "1.0-RC2",
- "org.wvlet.airframe" %% "airframe-log" % "0.80",
- "com.github.pathikrit" %% "better-files" % "3.7.0",
- "com.monovore" %% "decline" % "0.6.0",
- "com.monovore" %% "decline-refined" % "0.6.0",
+ "org.wvlet.airframe" %% "airframe-log" % "19.4.1",
+ "com.github.pathikrit" %% "better-files" % "3.7.1",
+ "com.monovore" %% "decline" % "0.6.2",
+ "com.monovore" %% "decline-refined" % "0.6.2",
  "group.aging-research" %% "assembly" % "0.0.10.1",
- "org.scalatest" %% "scalatest" % "3.0.5" % Test
+ "org.scalatest" %% "scalatest" % "3.0.7" % Test
 )
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF")

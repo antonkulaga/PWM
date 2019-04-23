@@ -185,6 +185,25 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     for { i <- begin until finish } yield i -> scoreAt(sm, i)
   }
 
+  /**
+    * same as SlideMatrix but takes into account spans that should be avoided
+    * @param sm
+    * @param avoid
+    * @param mult
+    * @param begin
+    * @param end
+    * @return
+    */
+  protected def slideMatrixGently(sm: DenseMatrix[Double], avoid: List[(Int, Int)], mult: Double = 1.0, begin: Int = 0, end: Int = Int.MaxValue): Seq[(Int, Double)] = {
+    val finish = Math.min(matrix.cols - sm.cols, end)
+    for {
+      i <- begin until finish
+      if !avoid.exists{
+        case (from, to) => from <= i + sm.cols && to >= i
+      }
+    } yield i -> scoreAt(sm, i)
+  }
+
   def scoreAt(sequence: String, i: Int): Double = {
     val sm = sequenceToMatrix(sequence, 1.0)
     scoreAt(sm, i)
@@ -211,13 +230,16 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * @param distance minimal distance between insertions
     * @return
     */
-  def candidates(seq: String, distance: Int = 0, begin: Int = 0, end: Int = Int.MaxValue, mult: Int = 1): List[(Int, Double)] = {
+  def candidates(seq: String, distance: Int = 0, begin: Int = 0, end: Int = Int.MaxValue, mult: Int = 1, fix: List[(Int, Int)]): List[(Int, Double)] = {
     val sm: DenseMatrix[Double] = sequenceToMatrix(seq, mult)
-    candidates(sm, distance, begin, end)
+    candidates(sm, distance, begin, end, fix = fix)
   }
 
-  def candidates(sm: DenseMatrix[Double], distance: Int, begin: Int, end: Int): List[(Int, Double)] = {
-    val slide: Seq[(Int, Double)] = slideMatrix(sm, begin = begin, end = end)//.filter(_._2 > minimalScore)
+  def candidates(sm: DenseMatrix[Double], distance: Int, begin: Int, end: Int, fix: List[(Int, Int)]): List[(Int, Double)] = {
+    val slide: Seq[(Int, Double)] = if(fix.isEmpty)
+      slideMatrix(sm, begin = begin, end = end)//.filter(_._2 > minimalScore)
+    else
+      slideMatrixGently(sm, begin = begin, end = end, avoid = fix)
     val slides: List[(Int, Double)] = slide.foldLeft(List.empty[(Int, Double)]){
       case (Nil, (i, v)) => (i, v)::Nil
       case ( (i0, v0)::tail, (i, v) ) if i0 + distance + sm.cols < i => (i, v)::(i0, v0)::tail
