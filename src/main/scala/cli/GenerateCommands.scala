@@ -9,7 +9,9 @@ import cats.implicits._
 import com.monovore.decline._
 import pwms.{LoaderPWM, PWM}
 import assembly.extensions._
+import breeze.linalg.DenseMatrix
 
+import scala.collection.mutable
 import scala.util.{Success, Try}
 
 
@@ -49,6 +51,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     val template = new StringTemplate(s)
     val restrictions =  RestrictionEnzymes(RestrictionEnzymes.commonEnzymesSet.filter{ case (e, _) => avoid.toList.contains(e)})
     val contentGC = ContentGC(g_min, g_max, List(WindowGC(win_gc_size1, win_gc_min1, win_gc_max1),WindowGC(win_gc_size2, win_gc_min2, win_gc_max2)).filter(_.size > 0))
+
     val params = GenerationParameters(template, rep, contentGC, restrictions)
     println(s"repeats are ${if(params.checkRepeats(s)) "OK" else "NOT OK"}, longest possible repeat should be less than ${rep}")
     println(s"longest found repeats have length of ${params.findLongestRepeats(s).head._1.size} and are:\n")
@@ -86,6 +89,53 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains)
 
     override def withReplacement(sequence: String, position: Int): GenerationParameters = copy(template = template.withSequenceReplacement(sequence, position))
+  }
+
+  class GenerationParametersAnalytics(val template: PWM,
+                                      val maxRepeatSize: Int,
+                                      val contentGC: ContentGC,
+                                      val enzymes: RestrictionEnzymes,
+                                      val avoidSequences: Set[String] = Set.empty,
+                                      val log_repeats: Int = 0
+                                          ) extends  GenerationParameters {
+
+    val repeatsPWM: PWM = template.copy(matrix = DenseMatrix.zeros(template.matrix.rows, template.matrix.cols))
+    protected val repeatStats: collection.mutable.Map[String, collection.immutable.List[Int]] = collection.mutable.Map.empty[String, collection.immutable.List[Int]]
+    def getRepeatStats(): mutable.Map[String, collection.immutable.List[Int]] = if(log_repeats <=0) collection.mutable.Map.empty[String, collection.immutable.List[Int]] else repeatStats.filter(_._2.length >= log_repeats)
+    def getPrintedRepeatStats() = getRepeatStats.toList.sortBy(- _._2.length).map{ case (rep, list) => rep + list.mkString(" : ", ", ", "")}.mkString("\n")
+
+    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains)
+
+    /**
+      * UGLY mutable!!!
+      * @param str
+      * @param len
+      * @return
+      */
+    override def checkRepeats(str: String, len: Int): Boolean = {
+      val mp = scala.collection.mutable.Map[String, Int]()
+      var i = 0
+      var result = true
+      for(i <- 0 to str.length - len) {
+        val s = str.slice(i, i + len)
+        if(mp.contains(s)) {
+          val n = str(i).toString
+          val r = repeatsPWM.indexes(n)
+          val v = repeatsPWM.matrix(r, i)
+          repeatsPWM.matrix.update(r, i, v + 1.0)
+          result = false
+          if(log_repeats>0) {
+            if(repeatStats.contains(s))
+              repeatStats.update(s, mp(s)::i::repeatStats(s))
+            else repeatStats.update(s, mp(s)::i::Nil)
+          }
+        } else mp.update(s, i)
+      }
+      result
+    }
+
+    override def withReplacement(sequence: String, position: Int): GenerationParameters = ??? //copy(template = template.withSequenceReplacement(sequence, position))
+
   }
 
 
@@ -170,8 +220,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
       instances, cloning,
       sticky_left, sticky_right,
       win_gc_size1, win_gc_min1, win_gc_max1,  win_gc_size2, win_gc_min2, win_gc_max2,
-      sticky_diff, sticky_gc, sticky_tries
-    ).mapN(generateSequences)
+      sticky_diff, sticky_gc, sticky_tries).mapN(generateSequences)
   }
   val generateSubcommand: Opts[Unit] = Opts.subcommand(generate)
 

@@ -8,7 +8,7 @@ organization := "group.aging-research"
 
 scalaVersion :=  "2.12.8"
 
-version := "0.0.16.1"
+version := "0.0.16"
 
 coursierMaxIterations := 200
 
@@ -59,9 +59,9 @@ bintrayOrganization := Some("comp-bio-aging")
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
-//dockerBaseImage := "oracle/graalvm-ce:19.0.2"
+dockerBaseImage := "oracle/graalvm-ce:19.0.2"
 
-dockerBaseImage := "openjdk:11-oracle"
+//dockerBaseImage := "openjdk:11-oracle"
 
 daemonUserUid in Docker := None
 

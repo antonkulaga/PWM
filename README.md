@@ -77,6 +77,31 @@ Lists PWM inside the folder and gives their stats and (if --verbose) values
      --delimiter <string>, -d <string>
          delimiter to be used when parsing PWMs
 ```
+concat subcommand
+-----------------
+Usage: PWM concat [--delimiter <string>] <first file> <second file> <output file>
+concat two PWMs
+Options and flags:
+    --help
+        Display this help text.
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
+
+*
+Multiplication subcommand
+-----------------------
+Repeats PWM several times
+```
+Usage: PWM * [--delimiter <string>] <first file> [<copies>] <output file>
+Multiple PWM several times
+Options and flags:
+    --help
+        Display this help text.
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
+```
+
+
 merge subcommand
 ---------------
 Merges PWM files in the folder together, to generalized PWM
@@ -233,6 +258,50 @@ Options and flags:
 ```
 Generates sequences PWMs based on synthesis parameters and restriction sides to avoid, also allows to add GoldenGate sites to ease cloning.
 
+generate_analytical
+--------------------
+Generates from PWM with information about repeats
+```
+Usage: PWM generate_analytical [--delimiter <string>] [--verbose] [--tries <integer>] [--max_repeats <integer>] [--avoid <string>]... [--gc_min <floating-point>] [--gc_max <floating-point>] [--win_gc_size1 <integer>] [--win_gc_min1 <floating-point>] [--win_gc_max1 <floating-point>] [--win_gc_size2 <integer>] [--win_gc_min2 <floating-point>] [--win_gc_max2 <floating-point>] [--sticky_diff <integer>] [--sticky_gc <integer>] [--sticky_tries <integer>] <file or folder to read from> <output file>
+Generates PWM with information about repeats of length --max_repeats which is saved with analytics suffix. It can also optionally list of repeats of length --max_repeats more frequent thatn log_repeats value
+Options and flags:
+    --help
+        Display this help text.
+    --delimiter <string>, -d <string>
+        delimiter to be used when parsing PWMs
+    --verbose, -v
+        show values of the found PWMs
+    --tries <integer>, -t <integer>
+        Maximum number of attempts to generate a good sequence
+    --max_repeats <integer>, -r <integer>
+        Maximum repeat length
+    --log_repeats <integer>
+        if more than 0 then it writes repeats which is more frequent than N to the log file with their coordinates
+    --avoid <string>, -a <string>
+        Avoid enzymes
+    --gc_min <floating-point>
+        minimum GC content
+    --gc_max <floating-point>
+        maximum GC content
+    --win_gc_size1 <integer>
+        GC window1 size, if < 1 then window is not used
+    --win_gc_min1 <floating-point>
+        window1 minimum GC content
+    --win_gc_max1 <floating-point>
+        window1 maximum GC content
+    --win_gc_size2 <integer>
+        GC window2 size, if < 1 then window is not used
+    --win_gc_min2 <floating-point>
+        window2 minimum GC content
+    --win_gc_max2 <floating-point>
+        window2 maximum GC content
+    --sticky_diff <integer>
+        minimal difference between sticky sides
+    --sticky_gc <integer>
+        minimal numbers of G || C nucleotides in the sticky end
+    --sticky_tries <integer>
+        Maximum number of attempts to select golden-gate edges if all other parameters match```
+
 Building from source
 ====================
 
@@ -269,7 +338,7 @@ Adding PWM library to your dependencies
 to depend on PWM library and use PWM classes, add the following:
 ```
 resolvers += sbt.Resolver.bintrayRepo("comp-bio-aging", "main")
-libraryDependencies += "group.aging-research" %%% "PWM" % "0.0.2"
+libraryDependencies += "group.aging-research" %%% "PWM" % "0.0.17"
 ```
 to your sbt configuration.
 The you should be able to use PWM classes like:

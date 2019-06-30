@@ -44,6 +44,7 @@ trait ConcatCommands extends ListCommand {
   protected lazy val outputFile = Opts.argument[Path]("output file")
   protected lazy val first = Opts.argument[Path]("first file")
   protected lazy val second = Opts.argument[Path]("second file")
+  protected lazy val mult = Opts.argument[Int]("copies").withDefault(2)
 
   protected lazy val concatCommand: Command[Unit] = Command(
     name = "concat", header = "concat two PWMs"
@@ -55,8 +56,22 @@ trait ConcatCommands extends ListCommand {
     }
   }
 
+  protected lazy val multiplyCommand: Command[Unit] = Command(
+    name = "*",  header = "Multiple PWM several times"
+  ) {
+    (first, mult, outputFile, delimiter).mapN{ (one, m, out, d) =>
+      val o = one.toFile.toScala
+      val a: PWM = LoaderPWM.loadFile(o, delimiter = d)
+      println(s"opened ${o} PWM of length ${a.matrix.cols}")
+      val result = (0 until m).map(_ => a).reduce(_.concat(_))
+      result.write(out, "\t", true)
+      println(s"result of size ${result.matrix.cols} written to ${out.toFile.toScala.pathAsString}")
+    }
+  }
 
-  protected val concatSubcommand: Opts[Unit] =  Opts.subcommand(concatCommand)
+  protected val concatSubcommand: Opts[Unit] =  Opts.subcommand(concatCommand).orElse(Opts.subcommand(multiplyCommand))
+
+
 }
 
 trait MergeCommands extends ConcatCommands{
