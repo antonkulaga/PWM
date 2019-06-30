@@ -12,10 +12,6 @@ import assembly.extensions._
 
 import scala.util.{Success, Try}
 
-import cats.data.Validated
-// import cats.data.Validated
-
-
 
 trait GenerateCommands extends ConsensusCommands with InsertCommands with CloningCommands {
 
@@ -80,17 +76,44 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
   //val template_repeats = Opts.option[Int](long = "tries", short = "t", help = "Maximum number of attempts to generate a good sequence").withDefault(10000)
 
   case class GenerationParametersPWM(template: PWM,
-                       maxRepeatSize: Int,
-                       contentGC: ContentGC,
-                       enzymes: RestrictionEnzymes) extends GenerationParameters {
+                                     maxRepeatSize: Int,
+                                     contentGC: ContentGC,
+                                     enzymes: RestrictionEnzymes,
+                                     avoidSequences: Set[String] = Set.empty) extends GenerationParameters {
 
+    //override def checkRepeats(sequence: String) = sequence.sliding(maxRepeatSize).toSet.nonEmpty
 
-    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-")
+    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains)
 
     override def withReplacement(sequence: String, position: Int): GenerationParameters = copy(template = template.withSequenceReplacement(sequence, position))
   }
 
 
+  /**
+    * generates the sequece according to parameters
+    * @param path Path to PWM
+    * @param delimiter delimiter used in csv/tsv file
+    * @param outputFile output sequence
+    * @param verbose tell more debug information
+    * @param max_tries maximum tried that one can do for generation
+    * @param max_repeat
+    * @param avoid_enzymes
+    * @param gc_min
+    * @param gc_max
+    * @param number
+    * @param enzyme
+    * @param stickyLeft
+    * @param stickyRight
+    * @param win_gc_size1
+    * @param win_gc_min1
+    * @param win_gc_max1
+    * @param win_gc_size2
+    * @param win_gc_min2
+    * @param win_gc_max2
+    * @param sticky_diff
+    * @param sticky_gc
+    * @param maxStickyTries
+    */
   def generateSequences(path: Path, delimiter: String, outputFile: Path,
                         verbose: Boolean,
                         max_tries: Int, max_repeat: Int,
@@ -114,7 +137,6 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     } {
       println(s"preparing sequences for PWM ${f} with length ${pwm.matrix.cols} and mean coverage ${pwm.meanCol}")
       val p = params(pwm)
-
       val gold = SequenceGeneratorGold(GoldenGate(enzymeFromName(enzyme), "N"), sticky_diff, sticky_gc, maxStickyTries)
       Try {
         if (stickyLeft == "" || stickyRight == "") gold.randomizeMany(p, number, max_tries) else gold.generateMany(p, number, max_tries, stickyLeft, stickyRight)
@@ -126,11 +148,12 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
               val name = if (verbose) stat else ">" + File(f).nameWithoutExtension.take(29)
               fl.append(name + "\n" + str + "\n")
           }
+          println(s"finished writing FASTA to ${fl.path}")
+
         case scala.util.Failure(exception) =>
           println(s"could not generate good to synthesize sequence for ${f} with ${max_tries} attempts")
       }
     }
-    println(s"finished writing FASTA to ${fl.path}")
   }
 
   protected lazy val cloning: Opts[String] = Opts.option[String](long = "enzyme", short = "e", help = "Golden gate enzyme for cloning, if nothing is chosen no GoldenGate sites are added").withDefault("")

@@ -1,15 +1,13 @@
 package pwms
 import java.io.FileNotFoundException
-import java.nio.file.Path
 
-import scala.util._
 import better.files._
-import File._
-import cats.implicits._
-import com.monovore.decline._
 
 import scala.collection.immutable.ListMap
 
+/**
+  * Class that loads PWMs from files and folders
+  */
 object LoaderPWM extends LoaderPWM
 trait LoaderPWM {
 
@@ -19,6 +17,7 @@ trait LoaderPWM {
 
   def loadPath(path: String, totalMissScore: Double = -12.0, gapMultiplier: Double = 4.0, delimiter: String = "auto", extensions: Set[String] = Set(".pwm", ".tsv", ".csv")): ListMap[String, PWM] =
     load(File(path), totalMissScore, gapMultiplier, delimiter, extensions)
+
   def load(file: File, totalMissScore: Double = -12.0, gapMultiplier: Double = 4.0, delimiter: String = "auto", extensions: Set[String] = Set(".pwm", ".tsv", ".csv")): ListMap[String, PWM] ={
     file match {
       case f if f.isRegularFile =>

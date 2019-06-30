@@ -39,9 +39,28 @@ trait ListCommand extends LogSupport{
   protected val listSubcommand =  Opts.subcommand(listCommand)
 }
 
-trait MergeCommands extends ListCommand{
+trait ConcatCommands extends ListCommand {
 
   protected lazy val outputFile = Opts.argument[Path]("output file")
+  protected lazy val first = Opts.argument[Path]("first file")
+  protected lazy val second = Opts.argument[Path]("second file")
+
+  protected lazy val concatCommand: Command[Unit] = Command(
+    name = "concat", header = "concat two PWMs"
+  ) {
+    (first, second, outputFile, delimiter).mapN{ (one, two, out, d) =>
+      val a: PWM = LoaderPWM.loadFile(one.toFile.toScala, delimiter = d)
+      val b: PWM = LoaderPWM.loadFile(two.toFile.toScala, delimiter = d)
+      a.concat(b).write(out, "\t", true)
+    }
+  }
+
+
+  protected val concatSubcommand: Opts[Unit] =  Opts.subcommand(concatCommand)
+}
+
+trait MergeCommands extends ConcatCommands{
+
   protected lazy val gapMultiplier = Opts.option[Double](long = "gapmult", short = "g", help = "how much we care about gaps when inserting").withDefault(4.0)
   protected lazy val miss_score = Opts.option[Double](long = "miss", short = "m", help = "miss score (negative value required)").withDefault(-12.0)
 

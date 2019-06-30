@@ -37,11 +37,11 @@ object PWM {
 
   /**
     * Parses lines of strings as PWM
-    * @param lines
-    * @param totalMissScore
+    * @param lines of text file
+    * @param totalMissScore how much we loose if we totally miss the position
     * @param gapMultiplier
-    * @param delimiter
-    * @return
+    * @param delimiter delimiter separating the columns (auto detection by default)
+    * @return created PWM
     */
   def parse(lines: Seq[String], totalMissScore: Double, gapMultiplier: Double = 10, delimiter: String = "auto"): PWM= {
     require(lines.nonEmpty, "Matrix cannot be empty")
@@ -67,6 +67,13 @@ object PWM {
       .zipWithIndex.map{ case (s, i) => rev(i)  + delimiter + s.replaceAll("\\s{1,}", delimiter)}
   }
 
+  /**
+    * Writes the matrix into the string, used for pretty-printing and other purposes
+    * @param indexes indexes connect matrix row numbers with letters (typically nucleotides and gaps)
+    * @param mat
+    * @param delimiter
+    * @return
+    */
   def matrixToString(indexes: SortedMap[String, Int], mat: DenseMatrix[Double], delimiter: String = "\t"): String ={
     matrixToLines(indexes, mat, delimiter).reduce(_ + "\n" + _)
       .replace(delimiter+"\n", "\n").trim //fix extra delimiter bug
@@ -86,6 +93,7 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   //lazy val matrixNoGaps: DenseMatrix[Double] = if(hasGaps) matrix.skipRows(indexes("-"), 1) else matrix
   //lazy val noGaps =
  // private lazy val columnOnesNoGaps = DenseMatrix.ones[Double](matrixNoGaps.rows, 1)
+
 
   val indexesInverted: SortedMap[Int, String] = indexes.map(_.swap)
 
@@ -133,6 +141,25 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   lazy val weightedLogOddsTable: DenseMatrix[Double] =  positiveLogOdds + (negativeLogOdds  *:*  colWeights) //just a hack to increase importance of high values
 
+  def concat(other: PWM): PWM = {
+    require(this.indexes == other.indexes, "keys and indexes of PWMs should match")
+    this.copy(matrix = DenseMatrix.horzcat(this.matrix, other.matrix))
+  }
+
+  def concat(sequence: String, value: Double): PWM = {
+    concat(this.sequenceToPWM(sequence, value))
+  }
+
+  /**
+    * Puts after the string
+    * @param sequence sequence
+    * @param value
+    * @return
+    */
+  def concatAfter(sequence: String, value: Double): PWM = {
+    this.sequenceToPWM(sequence, value).concat(this)
+  }
+
   /**
     * 'W' -> Array('A', 'T'), //weak
     * 'S' -> Array('C', 'G'), //strong
@@ -145,13 +172,15 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
     * 'H' -> Array('A', 'C', 'T'), //not G
     * 'V' -> Array('A', 'C', 'G'), //not T
     * 'N' -> Array('A', 'C', 'G', 'T') //any
-    *
-    * @param seq
-    * @param value
-    * @return
     */
   lazy val nucMap: Map[Char, Array[Char]] = assembly.extensions.nucs ++ Map('A' -> Array('A'),'T' -> Array('T'),'G' -> Array('G'),'C' -> Array('C') )
 
+  /**
+    * Turns sequence into matrix, used to create PWM
+    * @param seq sequence
+    * @param value which value to give to each position
+    * @return matrix filled according to sequence
+    */
   def sequenceToMatrix(seq: String, value: Double): DenseMatrix[Double] = {
     val m = DenseMatrix.zeros[Double](matrix.rows, seq.length)
     val ind: Seq[(Char, Int)] = seq.toUpperCase.zipWithIndex
@@ -167,7 +196,7 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
   /**
     * Converts sequence into PWM matrix
     * @param sequence
-    * @return
+    * @return PWM matrix
     */
   def sequenceToPWM(sequence: String, value: Double) = PWM(indexes, sequenceToMatrix(sequence, value), totalMissScore, gapMultiplier)
 
@@ -187,8 +216,8 @@ case class PWM(indexes: SortedMap[String, Int], matrix: DenseMatrix[Double], tot
 
   /**
     * same as SlideMatrix but takes into account spans that should be avoided
-    * @param sm
-    * @param avoid
+    * @param sm matrix
+    * @param avoid avoid spans
     * @param mult
     * @param begin
     * @param end

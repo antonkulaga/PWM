@@ -1,11 +1,8 @@
 package pwms
 
-import scala.util._
-import better.files._
-import File._
-import java.io.{File => JFile}
 import org.scalatest._
-import cats.implicits._
+
+import scala.util._
 
 class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
 
@@ -15,12 +12,12 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     val a = Random.nextInt(half - seq.length -1 )
     val b = half + Random.nextInt(half - seq.length -1 )
     val updated = p.withReplacement(seq, 1000, a).withReplacement(seq, 1000, b)
-    val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0)
+    val ( a1, _)::(b1, _)::_ = updated.candidates(seq, 0, fix = Nil)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
-    updated.candidates(seq, 0, begin = b1).head._1 shouldEqual b1 //checking limits
-    updated.candidates(seq, 0, end = b1-1).exists{ case (i, _) => i == a1} shouldEqual true
-    updated.candidates(seq, 0, end = b1-1).exists{ case (i, _) => i == b1} shouldEqual false
+    updated.candidates(seq, 0, begin = b1, fix = Nil).head._1 shouldEqual b1 //checking limits
+    updated.candidates(seq, 0, end = b1-1, fix = Nil).exists{ case (i, _) => i == a1} shouldEqual true
+    updated.candidates(seq, 0, end = b1-1, fix = Nil).exists{ case (i, _) => i == b1} shouldEqual false
 
     assert(a == a1,
       s"""
@@ -58,7 +55,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
     ins1 shouldEqual updated.readBest(a, seq.length)
     ins2 shouldEqual updated.readBest(b, seq.length)
 
-    val ( a1, _)::(b1, _)::tail = updated.candidates(seq, 1)
+    val ( a1, _)::(b1, _)::tail = updated.candidates(seq, 1, fix = Nil)
     val bestA = updated.readBest(a1, seq.length)
     val bestB = updated.readBest(b1, seq.length)
 
@@ -115,7 +112,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
         val pos = 4
 
         val updatedLow = p.withReplacement(toInsert, 696.0, pos)
-        val lowHead = updatedLow.candidates(seq, 1).head
+        val lowHead = updatedLow.candidates(seq, 1, fix = Nil).head
         println(s"LOW HEAD = $lowHead")
         //println("low weights")
         //println(updatedLow.colWeights.toString(1000,1000))
@@ -123,7 +120,7 @@ class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
 
         lowHead._1 shouldEqual pos
         val updatedHigh = p.withReplacement(toInsert, 100000, pos)
-        val highHead = updatedHigh.candidates(seq, 1).head
+        val highHead = updatedHigh.candidates(seq, 1, fix = Nil).head
         println(updatedHigh.weightedLogOddsTable.toString(1000,1000))
         println(s"HIGH HEAD = $highHead")
         assert(highHead._1 != pos, "high priority insertion cannot be overriden")

@@ -11,7 +11,9 @@ import pwms.{LoaderPWM, PWM}
 
 import scala.util.Try
 
-
+/**
+  * Commands to insert the sequence into the PWM in the optimal places
+  */
 trait InsertCommands extends MergeCommands{
 
 
@@ -37,6 +39,9 @@ trait InsertCommands extends MergeCommands{
       .withDefault(List.empty[(Int, Int)])
 
 
+  /**
+    * Inserts the sequence manually into some positions inside of the PWM
+    */
   protected lazy val manualInsertCommand = Command(
     name = "insert_at",
     header = "insert sequence manually into some positions"
