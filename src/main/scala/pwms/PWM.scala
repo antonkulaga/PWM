@@ -62,7 +62,7 @@ object PWM {
 
   def matrixToLines(indexes: SortedMap[String, Int], mat: DenseMatrix[Double], delimiter: String = "\t"): Seq[String] ={
     val rev = indexes.map{ case (k, v) => (v, k)}
-    mat.toString(mat.rows * 2, 10000)
+    mat.toString(mat.rows * 2, 500000)
       .split("\n")
       .zipWithIndex.map{ case (s, i) => rev(i)  + delimiter + s.replaceAll("\\s{1,}", delimiter)}
   }

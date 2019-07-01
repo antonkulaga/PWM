@@ -104,7 +104,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     def getRepeatStats(): mutable.Map[String, collection.immutable.List[Int]] = if(log_repeats <=0) collection.mutable.Map.empty[String, collection.immutable.List[Int]] else repeatStats.filter(_._2.length >= log_repeats)
     def getPrintedRepeatStats() = getRepeatStats.toList.sortBy(- _._2.length).map{ case (rep, list) => rep + list.mkString(" : ", ", ", "")}.mkString("\n")
 
-    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains)
+    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains) && checkRepeats(sequence)
 
     /**
       * UGLY mutable!!!
@@ -113,25 +113,36 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
       * @return
       */
     override def checkRepeats(str: String, len: Int): Boolean = {
-      val mp = scala.collection.mutable.Map[String, Int]()
-      var i = 0
-      var result = true
+      val mp = scala.collection.mutable.Map[String, List[Int]]()
       for(i <- 0 to str.length - len) {
         val s = str.slice(i, i + len)
-        if(mp.contains(s)) {
-          val n = str(i).toString
-          val r = repeatsPWM.indexes(n)
-          val v = repeatsPWM.matrix(r, i)
-          repeatsPWM.matrix.update(r, i, v + 1.0)
-          result = false
-          if(log_repeats>0) {
-            if(repeatStats.contains(s))
-              repeatStats.update(s, mp(s)::i::repeatStats(s))
-            else repeatStats.update(s, mp(s)::i::Nil)
-          }
-        } else mp.update(s, i)
+        if(mp.contains(s)){
+          mp.update(s, i::mp(s))
+        } else mp.update(s, List(i))
       }
-      result
+      for{
+        (s, list) <- mp
+        if list.length > 1
+        (n, j) <- s.zipWithIndex
+        i <- list
+        pos = j + i
+      } {
+        val r = repeatsPWM.indexes(n.toString)
+        val v = repeatsPWM.matrix(r, pos)
+        repeatsPWM.matrix.update(r, pos, v+1)
+      }
+      if(log_repeats > 0){
+        for{
+          (s, list) <- mp
+          if list.length > log_repeats
+        }
+          {
+            if(repeatStats.contains(s)) repeatStats.update(s, repeatStats(s) ++ list) else repeatStats.update(s, list)
+          }
+      }
+      val res = mp.values.exists(_.size > 1)
+      mp.clear()
+      res
     }
 
     override def withReplacement(sequence: String, position: Int): GenerationParameters = ??? //copy(template = template.withSequenceReplacement(sequence, position))
