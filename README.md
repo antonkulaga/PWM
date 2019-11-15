@@ -329,7 +329,7 @@ sbt docker:publishLocal
 ```
 to publish a docker container with the application. Then you can start the container:
 ```bash
-docker run -v /path/to/my/data:/data quay.io/comp-bio-aging/pwm:0.0.17
+docker run -v /path/to/my/data:/data quay.io/comp-bio-aging/pwm:0.0.16
 ```
 
 Adding PWM library to your dependencies
@@ -338,7 +338,7 @@ Adding PWM library to your dependencies
 to depend on PWM library and use PWM classes, add the following:
 ```
 resolvers += sbt.Resolver.bintrayRepo("comp-bio-aging", "main")
-libraryDependencies += "group.aging-research" %%% "PWM" % "0.0.17"
+libraryDependencies += "group.aging-research" %%% "PWM" % "0.0.16"
 ```
 to your sbt configuration.
 The you should be able to use PWM classes like:

@@ -104,7 +104,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
     def getRepeatStats(): mutable.Map[String, collection.immutable.List[Int]] = if(log_repeats <=0) collection.mutable.Map.empty[String, collection.immutable.List[Int]] else repeatStats.filter(_._2.length >= log_repeats)
     def getPrintedRepeatStats() = getRepeatStats.toList.sortBy(- _._2.length).map{ case (rep, list) => rep + list.mkString(" : ", ", ", "")}.mkString("\n")
 
-    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains) && checkRepeats(sequence)
+    override def check(sequence: String): Boolean = checkEnzymes(sequence) && checkRepeats(sequence) && checkGC(sequence) && !sequence.contains("-") && !avoidSequences.exists(sequence.contains)
 
     /**
       * UGLY mutable!!!
@@ -140,7 +140,7 @@ trait GenerateCommands extends ConsensusCommands with InsertCommands with Clonin
             if(repeatStats.contains(s)) repeatStats.update(s, repeatStats(s) ++ list) else repeatStats.update(s, list)
           }
       }
-      val res = mp.values.exists(_.size > 1)
+      val res = !mp.values.exists(_.length > 1)
       mp.clear()
       res
     }
