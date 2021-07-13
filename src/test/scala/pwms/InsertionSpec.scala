@@ -1,10 +1,11 @@
 package pwms
 
-import org.scalatest._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 import scala.util._
 
-class InsertionSpec extends WordSpec with Matchers with BasicPWMSpec {
+class InsertionSpec extends AnyWordSpec with Matchers with BasicPWMSpec {
 
 
   def testSearch(p: PWM, seq: String): (String, String) = {

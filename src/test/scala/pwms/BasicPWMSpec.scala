@@ -3,12 +3,16 @@ package pwms
 import scala.util._
 import better.files._
 import File._
+
 import java.io.{File => JFile}
 import org.scalatest._
 import cats.implicits._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
+
 
 trait BasicPWMSpec {
-  self: WordSpec with Matchers =>
+  self: AnyWordSpec with Matchers =>
 
 
   lazy val defaultTotalMiss: Double = -12.0

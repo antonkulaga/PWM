@@ -7,8 +7,10 @@ import java.io.{File => JFile}
 import org.scalatest._
 import cats.implicits._
 
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
-class GeneralPWMSpec extends WordSpec with Matchers with BasicPWMSpec {
+class GeneralPWMSpec extends AnyWordSpec with Matchers with BasicPWMSpec {
   "PWM" should {
     "be parsed properly" in {
       val gapMultiplier = 4.0

@@ -11,9 +11,11 @@ import breeze.numerics._
 import org.scalatest._
 import pwms.functions._
 import cats.implicits._
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 
 
-class RandomizationSpec  extends WordSpec with Matchers with BasicPWMSpec {
+class RandomizationSpec  extends AnyWordSpec with Matchers with BasicPWMSpec {
 
   def replaceNuc(matrix: DenseMatrix[Double], row: Int): DenseMatrix[Double] = {
     val zeros = DenseMatrix.zeros[Double](1, matrix.cols)

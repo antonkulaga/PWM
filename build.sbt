@@ -4,11 +4,11 @@ import sbt._
 
 name := "pwm"
 
-organization := "group.aging-research"
+organization := "com.github.antonkulaga"
 
-scalaVersion :=  "2.13.1"
+scalaVersion :=  "2.13.6"
 
-version := "0.0.16"
+version := "0.0.2"
 
 isSnapshot := false
 
@@ -18,50 +18,45 @@ javacOptions ++= Seq("-Xlint", "-J-Xss256M", "-encoding", "UTF-8")
 
 javaOptions ++= Seq("-Xms512M", "-Xmx4096M", "-XX:MaxPermSize=2048M", "-XX:+CMSClassUnloadingEnabled")
 
-resourceDirectory in Test := baseDirectory { _ / "files" }.value
+Test / resourceDirectory := baseDirectory { _ / "files" }.value
 
-unmanagedClasspath in Compile ++= (unmanagedResources in Compile).value
+Compile / unmanagedClasspath ++= (Compile / unmanagedResources).value
 
 resolvers += Resolver.mavenLocal
 
-resolvers += Resolver.sonatypeRepo("releases")
 
-resolvers += Resolver.bintrayRepo("comp-bio-aging", "main")
-
-addCompilerPlugin("com.olegpy" %% "better-monadic-for" % "0.3.1")
+resolvers += "jitpack.io" at "https://jitpack.io"
 
 libraryDependencies ++= Seq(
- "org.scalanlp" %% "breeze" % "1.0",
- "org.scalanlp" %% "breeze-natives" % "1.0",
- "org.wvlet.airframe" %% "airframe-log" % "19.11.1",
- "com.github.pathikrit" %% "better-files" % "3.8.0",
- "com.monovore" %% "decline" % "1.0.0",
- "com.monovore" %% "decline-refined" % "1.0.0",
- "group.aging-research" %% "assembly" % "0.0.13",
- "org.scalatest" %% "scalatest" % "3.0.8" % Test
+ "org.scalanlp" %% "breeze" % "1.2",
+ "org.wvlet.airframe" %% "airframe-log" % "21.7.0",
+ "com.github.pathikrit" %% "better-files" % "3.9.1",
+ "com.monovore" %% "decline" % "2.1.0",
+ "com.github.antonkulaga" % "assembly" % "0.0.14",
+ "org.scalatest" %% "scalatest-wordspec" % "3.2.9"  % Test,
+ "org.scalatest" %% "scalatest-shouldmatchers" % "3.2.9" % Test,
+ "org.scalatest" %% "scalatest-flatspec" % "3.2.9" % Test,
+ "org.scalatest" %% "scalatest" % "3.2.9" % Test
 )
 
-testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
+Test / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-oF")
 
 exportJars := true
 
-fork in run := true
+run / fork := true
 
-parallelExecution in Test := false
+Test / parallelExecution := false
 
-bintrayRepository := "main"
-
-bintrayOrganization := Some("comp-bio-aging")
 
 licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 
-dockerBaseImage := "oracle/graalvm-ce:19.2.1"
+dockerBaseImage := "ghcr.io/graalvm/graalvm-ce:latest"
 
 //dockerBaseImage := "openjdk:11-oracle"
 
-daemonUserUid in Docker := None
+Docker / daemonUserUid := None
 
-daemonUser in Docker := "root"
+Docker / daemonUser := "root"
 
 dockerExposedVolumes := Seq("/data")
 
@@ -69,14 +64,13 @@ dockerUpdateLatest := true
 
 dockerChmodType := DockerChmodType.UserGroupWriteExecute
 
-maintainer in Docker := "Anton Kulaga <antonkulaga@gmail.com>"
+Docker / maintainer := "Anton Kulaga <antonkulaga@gmail.com>"
 
 maintainer := "Anton Kulaga <antonkulaga@gmail.com>"
 
-dockerRepository := Some("quay.io/comp-bio-aging")
+dockerRepository := Some("quay.io/antonkulaga")
 
 dockerCommands ++= Seq(
- Cmd("RUN","yum install -y openblas.x86_64 openblas-devel"),
  Cmd("WORKDIR", "/data"),
  Cmd("ENV", "JAVA_OPTS", "-Xmx4g")
 )

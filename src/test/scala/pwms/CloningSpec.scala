@@ -3,15 +3,16 @@ package pwms
 import scala.util._
 import better.files._
 import File._
-import java.io.{File => JFile}
 
+import java.io.{File => JFile}
 import assembly.cloning.{GoldenGate, RestrictionEnzyme, RestrictionEnzymes}
 import org.scalatest._
 import cats.implicits._
 import cli.CloningCommands
-
+import org.scalatest.matchers.should.Matchers
+import org.scalatest.wordspec.AnyWordSpec
 import scala.collection.immutable.ListMap
-class CloningSpec extends WordSpec with Matchers  {
+class CloningSpec extends AnyWordSpec with Matchers  {
 
 
   "Cloning" should {
